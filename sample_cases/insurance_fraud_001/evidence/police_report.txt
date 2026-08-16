@@ -1,0 +1,35 @@
+== POLICE REPORT ==
+Report Number: BER-PI-2026-0715-018
+Date of Report: 15.07.2026
+Date and Time of Incident: 02.07.2026, 14:28
+Location: Friedrichstr. 12, 10117 Berlin
+
+Involved Parties:
+  Driver: Max Mustermann, Tax ID: MSTRRT56L21F205R
+  Vehicle: VW Golf VII, VIN: WVWZZZ1JZ2N001234
+  License Plate: B-AB 1234
+
+Incident Description:
+At approximately 14:28 on July 2, 2026, the driver of the above vehicle
+reported a collision resulting in property damage to the vehicle's front
+bumper and left headlight.
+
+Witnesses:
+  Anna Schmidt, address: Musterweg 3, 10115 Berlin
+
+Investigation Result:
+No independent collision report was filed by any other party.
+The driver did not request emergency medical services at the scene.
+Vehicle registered to Max Mustermann since 01.06.2024.
+Insurance Provider: SecureCar Versicherung, Konto: DE44720300001234567890
+
+Conclusion:
+The reported damage is minor in nature. No third-party involvement confirmed.
+
+== ACCIDENT PHOTO ==
+Photo ID: PHOTO-001
+Timestamp: 2026-07-02T14:35:00
+Taken by: Max Mustermann (via dashcam)
+Description: Vehicle front viewed from driver side.
+Visible damage: small scratch on bumper, approx. 5cm length.
+Headlight: no visible damage.

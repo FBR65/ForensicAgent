@@ -1,0 +1,43 @@
+Insurance Claim Investigation — Case File
+
+Date: 2026-07-15
+Investigator: Forensic Agent Pipeline
+
+== CLAIM FORM ==
+Claim Number: CLM-2026-7789
+Policy Number: POL-4456-ABC
+Insured Person: Max Mustermann
+Tax ID: MSTRRT56L21F205R
+Date of Birth: 15.03.1985
+Residence: Berliner Str. 45, 10115 Berlin, Germany
+Phone: +49 30 98765432
+Email: max.mustermann@email.de
+
+Vehicle: VW Golf VII, VIN: WVWZZZ1JZ2N001234
+Date of Loss: 02.07.2026
+Location of Incident: Friedrichstr. 12, 10117 Berlin
+Reported Damage: Front bumper, left headlight
+
+== PHOTO INSPECTION REPORT ==
+Vehicle inspected on 2026-07-14 by inspector Klaus Weber.
+Claimed damage: front bumper cracked, left headlight broken.
+Actual findings: Front bumper has minor scratch (pre-existing).
+Left headlight: intact. No fresh impact damage visible on the headlight.
+Conclusion: Headlight damage claimed is not supported by physical evidence.
+
+== WITNESS STATEMENT ==
+Witness: Anna Schmidt
+Email: anna.schmidt@beispiel.de
+Statement given: 2026-07-03
+I was walking on Friedrichstrasse at approximately 14:30 on July 2, 2026.
+I saw a red Volkswagen Golf drive into the intersection.
+The vehicle did NOT collide with any other car or object.
+It continued driving normally toward Alexanderplatz.
+
+== MEDICAL REPORT ==
+Patient: Max Mustermann
+Doctor: Dr. Petra Hoffmann, MVZ am Checkpoint
+Diagnosis: Whiplash injury (M54.3)
+Date of examination: 2026-07-05
+Treatment: Rest, pain medication
+Note: Patient reports neck pain following alleged collision.

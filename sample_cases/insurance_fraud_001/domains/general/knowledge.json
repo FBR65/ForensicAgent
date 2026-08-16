@@ -1,0 +1,19 @@
+[{
+  "id": "claim_template_v1",
+  "title": "Standard Insurance Claim Filing Template",
+  "body": "A standard insurance claim filing includes: policy number, insured name, date of loss, description of damage, police report reference, and supporting evidence. Amounts claimed must be documented by receipts or repair estimates. Medical claims require a physician diagnosis and treatment plan.",
+  "tags": ["template", "filing", "insurance"]
+},
+{
+  "id": "fraud_indicators_2026",
+  "title": "Insurance Fraud Indicators — Guidelines",
+  "body": "Red flags for fraudulent claims: (1) Damage claimed but not present in photos, (2) Witness statements contradicting the driver's account, (3) Medical evidence disproportionate to claimed impact, (4) No police report filed for alleged collision, (5) Dashcam footage inconsistent with damage claims.",
+  "tags": ["rules", "fraud_detection", "indicators"]
+},
+{
+  "id": "evidence_standards",
+  "title": "Forensic Evidence Standards",
+  "body": "Every factual assertion must be supported by atomic evidence traceable to a primary source document. Primary sources (police reports, medical reports, inspection reports) carry higher evidentiary weight than derivative sources (witness recollections, dashcam timestamps).",
+  "tags": ["rules", "evidence_standards"]
+}
+]

@@ -1,0 +1,39 @@
+{
+  "name": "general",
+  "label": "General Forensic",
+  "categories": [
+    "identity_document",
+    "financial_record",
+    "communication",
+    "log_file",
+    "medical_record",
+    "expert_report",
+    "court_filing",
+    "template",
+    "metadata",
+    "other"
+  ],
+  "requirements": [
+    {"domain": "general", "description": "Identity verification",
+     "required_fact_types": ["PERSON", "DATE"]},
+    {"domain": "general", "description": "Source traceability",
+     "required_fact_types": ["SOURCE"]}
+  ],
+  "rules": [
+    {"id": "general-1", "name": "Identity Verification",
+     "description": "Person facts must trace to a source",
+     "fact_types": ["PERSON"], "check": "has_evidence", "severity": "error"},
+    {"id": "general-2", "name": "Amount Must Have Source",
+     "description": "Every monetary amount must have documented evidence",
+     "fact_types": ["AMOUNT"], "check": "has_evidence", "severity": "error"},
+    {"id": "general-3", "name": "Confidence Threshold",
+     "description": "Facts below 0.5 confidence must be reviewed",
+     "fact_types": [], "check": "min_confidence:0.5", "severity": "warning"}
+  ],
+  "entity_patterns": {
+    "PERSON": [],
+    "ORG": [],
+    "DATE": [],
+    "AMOUNT": []
+  }
+}

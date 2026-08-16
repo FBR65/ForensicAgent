@@ -1,0 +1,233 @@
+from __future__ import annotations
+
+import logging
+import os
+import tempfile
+from typing import Any
+
+from forensicagent.agents import (
+    AssessmentAgent,
+    ClassificationAgent,
+    ContextBuilderAgent,
+    EvidenceLinkingAgent,
+    FactExtractionAgent,
+    GroundingAgent,
+    IngestionAgent,
+    KnowledgeBaseAgent,
+    KnowledgeRetrievalAgent,
+    QualityControlAgent,
+    ReportingAgent,
+    ReviewAgent,
+    ValidationAgent,
+    KeywordIndexAgent,
+)
+from forensicagent.domains.config import load_domain
+from forensicagent.models import (
+    Fact,
+    Requirement,
+    Source,
+)
+from forensicagent.pipeline.graph import CaseGraph
+from forensicagent.utils.bm25 import BM25Index
+
+logger = logging.getLogger(__name__)
+
+
+class ForensicPipeline:
+    """The master orchestrator.
+
+    Usage::
+
+        pipeline = ForensicPipeline(case_id="CASE-2026-001")
+        pipeline.ingest(["evidence/doc1.pdf", "evidence/log.txt"])
+        result = pipeline.query("What is the total liability?")
+        report = pipeline.build_report()
+        pipeline.close()
+    """
+
+    def __init__(
+        self,
+        case_id: str,
+        domain: str = "general",
+        kb_dirs: list[str] | None = None,
+        session_dir: str | None = None,
+    ) -> None:
+        self.case_id = case_id
+        self.domain = load_domain(domain)
+        self._session_dir = session_dir or tempfile.mkdtemp(prefix=f"forensic-session-{case_id[:8]}-")
+        self._graph = CaseGraph(case_id, lmdb_path=self._session_dir, restore=True)
+
+        self._ingestor = IngestionAgent(case_id)
+        self._qc = QualityControlAgent(case_id)
+        self._classifier = ClassificationAgent(case_id)
+        self._keyword_agent = KeywordIndexAgent(case_id)
+        self._fact_extractor = FactExtractionAgent(case_id)
+        self._evidence_linker = EvidenceLinkingAgent(case_id)
+        self._validator = ValidationAgent(case_id, domain=domain)
+        self._knowledge = KnowledgeRetrievalAgent(case_id, kb_dirs=kb_dirs) if kb_dirs else None
+        self._kb_assistant = KnowledgeBaseAgent(case_id, kb_dirs=kb_dirs) if kb_dirs else None
+        self._context_builder = ContextBuilderAgent(case_id)
+        self._assessor = AssessmentAgent(case_id, self._graph)
+        self._grounder = GroundingAgent(case_id, self._graph)
+        self._reporter = ReportingAgent(case_id, self._graph)
+        self._reviewer = ReviewAgent(case_id, self._graph)
+
+        self._sources_by_id: dict[str, Source] = {}
+        self._ingested = False
+
+    # ---- phase methods ----
+
+    def ingest(self, paths: list[str]) -> list[Source]:
+        logger.info("[%s] Phase 1-2: Ingestion & Quality Control", self.case_id)
+        sources = self._ingestor.ingest_files(paths)
+        self._qc.assess_batch(sources)
+        self._classifier.classify_batch(sources)
+        for s in sources:
+            self._graph.add_source(s)
+            self._sources_by_id[s.id] = s
+        self._ingested = True
+        logger.info("Ingested %d sources (%d usable, %d review, %d blocking)",
+                    len(sources),
+                    sum(1 for s in sources if s.status.value == "usable"),
+                    sum(1 for s in sources if s.status.value == "requires_review"),
+                    sum(1 for s in sources if s.status.value == "blocking"))
+        return sources
+
+    def index_keywords(self) -> BM25Index | None:
+        logger.info("[%s] Phase 3: BM25 Keyword Indexing", self.case_id)
+        usable_sources = [s for s in self._sources_by_id.values() if s.raw_text]
+        self._keyword_agent.index_sources(usable_sources)
+        for s in usable_sources:
+            self._keyword_agent.extract_keywords(s, top_k=15)
+        return self._keyword_agent.bm25
+
+    def extract_and_link(self) -> tuple[list[Fact], list]:
+        logger.info("[%s] Phase 4-5: Fact Extraction & Evidence Linking", self.case_id)
+        sources = [s for s in self._sources_by_id.values() if s.raw_text]
+        facts = self._fact_extractor.extract_batch(sources, self.case_id)
+        evidence_items = self._evidence_linker.link_batch(facts, self._sources_by_id)
+
+        # Apply deterministic classification of fact status.
+        for fact in facts:
+            status = self._evidence_linker.classify_fact(fact, self._sources_by_id.get(fact.source_ids[0], Fact(id="", case_id="", type="", value="")))
+            fact.status = status
+
+        # Run validation rules.
+        self._validator.validate_batch(facts)
+
+        # Add to graph.
+        for fact in facts:
+            self._graph.add_fact(fact)
+        for ev in evidence_items:
+            self._graph.add_evidence(ev)
+
+        logger.info("Extracted %d facts, %d evidence items", len(facts), len(evidence_items))
+        return facts, evidence_items
+
+    def build_graph(self, requirements: list[Requirement] | None = None) -> CaseGraph:
+        logger.info("[%s] Phase 6: Graph Build & Requirements", self.case_id)
+        if requirements is None:
+            requirements = [
+                Requirement(
+                    id=f"REQ-{self.case_id[:8]}-{i}",
+                    case_id=self.case_id,
+                    domain=self.domain.name,
+                    description=req["description"],
+                    required_fact_types=req["required_fact_types"],
+                )
+                for i, req in enumerate(self.domain.requirements)
+            ]
+        for req in requirements:
+            self._graph.add_requirement(req)
+            self._graph.update_requirement_status(req)
+        self._graph.checkpoint()
+        logger.info("Graph: %d facts, %d evidence, %d requirements",
+                    len(self._graph.all_facts()),
+                    len(self._graph.all_evidence()),
+                    len(self._graph.all_requirements()))
+        return self._graph
+
+    def query(self, question: str) -> dict[str, Any]:
+        """Run a single query through the full evidence-constrained pipeline."""
+        if not self._ingested:
+            raise RuntimeError("Call ingest() before query()")
+
+        logger.info("[%s] Phase 7-12: Query → %s", self.case_id, question)
+        context = self._context_builder.build_context(
+            self._graph, question, knowledge_agent=self._knowledge
+        )
+        assessment = self._assessor.assess(question, context)
+        grounding = self._grounder.verify(assessment["answer"])
+
+        if not grounding.passed:
+            logger.warning("Grounding failed: %s", grounding.summary)
+            # Feed back into graph as review items.
+            for claim in grounding.ungrounded_claims:
+                logger.warning("  Ungrounded %s: %s", claim["type"], claim["claim"])
+
+        return {
+            "question": question,
+            "answer": assessment["answer"],
+            "mode": assessment["mode"],
+            "grounding": {
+                "passed": grounding.passed,
+                "summary": grounding.summary,
+                "grounded_claims": grounding.grounded_claims,
+                "ungrounded_claims": grounding.ungrounded_claims,
+            },
+        }
+
+    def build_report(self, title: str = "Forensic Case Report") -> dict[str, Any]:
+        logger.info("[%s] Phase 13: Reporting", self.case_id)
+        return self._reporter.build_report(title=title)
+
+    def export_markdown_report(self) -> str:
+        report = self.build_report()
+        return self._reporter.export_markdown(report)
+
+    # ---- review / corrections ----
+
+    def correct_fact_status(self, fact_id: str, new_status: str) -> Fact | None:
+        return self._reviewer.correct_fact_status(fact_id, new_status)
+
+    def re_evaluate_requirements(self) -> list[dict[str, Any]]:
+        return self._reviewer.re_evaluate_requirements()
+
+    # ---- knowledge-base authoring ----
+
+    def build_kb_document(self, description: str, domain: str | None = None) -> dict[str, Any]:
+        """Help the forensic professional author a KB document via LLM Q&A.
+
+        The professional describes a rule / precedent / procedure; the LLM
+        structures it into a KB entry (JSON) which is written to the KB dir.
+        """
+        if self._kb_assistant is None:
+            raise RuntimeError("No kb_dirs configured — pass kb_dirs to ForensicPipeline.")
+        doc, path = self._kb_assistant.add_document_from_description(
+            description, domain or self.domain.name
+        )
+        # Re-index the retrieval agent so the new doc is immediately searchable.
+        if self._knowledge is not None:
+            self._knowledge.reindex()
+        return {"document": doc, "path": str(path)}
+
+    # ---- teardown ----
+
+    def close(self) -> None:
+        """Destroy the volatile session (LMDB store is wiped)."""
+        self._graph.destroy()
+        logger.info("[%s] Session destroyed — case data purged.", self.case_id)
+
+    def __enter__(self) -> "ForensicPipeline":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
+
+    @property
+    def graph(self) -> CaseGraph:
+        return self._graph
+
+    @property
+    def keyword_agent(self) -> KeywordIndexAgent:
+        return self._keyword_agent

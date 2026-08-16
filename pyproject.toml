@@ -1,0 +1,43 @@
+[project]
+name = "forensicagent"
+version = "0.1.0"
+description = "General-purpose AI forensic agent pipeline (Agno + SpaCy + BM25 + LMDB)"
+readme = "README.md"
+authors = [
+    { name = "FBR65", email = "FBR65@duck.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "agno>=2.0",
+    "spacy>=3.8",
+    "rank-bm25>=0.2",
+    "networkx>=3.4",
+    "lmdb>=1.4",
+    "firecrawl-anydoc>=0.1.9",
+    "pymupdf>=1.24",
+    "python-docx>=1.1",
+    "pytesseract>=0.3",
+    "pillow>=10.4",
+    "openai>=1.40",
+    "pydantic>=2.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+]
+
+[project.scripts]
+forensicagent = "forensicagent:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3",
+]
+
+[tool.spacy]
+models = ["de_dep_news_trf"]

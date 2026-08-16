@@ -1,0 +1,26 @@
+[
+  {
+    "id": "general-1",
+    "name": "Identity Verification",
+    "description": "Verify the identity of the subject",
+    "fact_types": ["PERSON", "TAX_ID", "DATE"],
+    "check": "type:PERSON",
+    "severity": "error"
+  },
+  {
+    "id": "general-2",
+    "name": "Amount Must Have Source",
+    "description": "Every monetary amount must have documented evidence",
+    "fact_types": ["AMOUNT"],
+    "check": "has_evidence",
+    "severity": "error"
+  },
+  {
+    "id": "general-3",
+    "name": "Confidence Threshold",
+    "description": "Facts below 0.5 confidence must be reviewed",
+    "fact_types": [],
+    "check": "min_confidence:0.5",
+    "severity": "warning"
+  }
+]
