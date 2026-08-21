@@ -20,6 +20,7 @@ dependencies = [
     "pillow>=10.4",
     "openai>=1.40",
     "pydantic>=2.8",
+    "semantica[agno]>=0.6.6,<0.7",
 ]
 
 [project.optional-dependencies]
