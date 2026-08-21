@@ -82,8 +82,12 @@ class CaseGraph:
     The primary working set is an in-memory NetworkX DiGraph for fast
     traversal.  Optionally, every mutation is mirrored to an LMDB
     environment so the session can be checkpointed or restored.  The LMDB
-    directory is **destroyed** on ``close_session`` / ``destroy`` — client
-    data never becomes permanent system memory.
+    directory is destroyed on close_session / destroy.
+
+    When a SemanticaBackend is supplied via *backend*, every add_* call is
+    additionally mirrored into the backend's ContextGraph so that Semantica's
+    provenance, conflict-detection, deduplication, and export facilities
+    operate on the same data.
     """
 
     def __init__(
@@ -91,17 +95,21 @@ class CaseGraph:
         case_id: str,
         lmdb_path: Optional[str] = None,
         restore: bool = False,
+        backend: Optional[Any] = None,
     ) -> None:
         self.case_id = case_id
         self._graph: DiGraph = nx.DiGraph()
         self._lmdb: Optional[LMDBStore] = None
         self._lmdb_path: Optional[str] = lmdb_path or tempfile.mkdtemp(prefix=f"case-{case_id[:8]}-")
+        self._semantica_backend: Optional[Any] = backend
         if restore and os.path.exists(self._lmdb_path):
             self._lmdb = LMDBStore(self._lmdb_path)
             self._restore_from_lmdb()
         else:
             self._lmdb = LMDBStore(self._lmdb_path)
         self._graph.add_node(self.case_id, type="case", data={"id": case_id})
+        if self._semantica_backend is not None:
+            self._semantica_backend.context_graph.add_node(case_id, "case", case_id)
 
     # ---- persistence ----
 
@@ -112,6 +120,41 @@ class CaseGraph:
     def _persist_edge(self, src: str, dst: str, label: str | None, key: str) -> None:
         if self._lmdb:
             self._lmdb.put_edge(key, {"_src": src, "_dst": dst, "_label": label or ""})
+
+    def _mirror_node(self, node_id: str, node_type: str, data: Any) -> None:
+        """Mirror a node into the Semantica ContextGraph if backend is active."""
+        if self._semantica_backend is None:
+            return
+        cg = self._semantica_backend.context_graph
+        if cg is None:
+            return
+        # Serialize dataclass to dict for ContextGraph properties
+        if hasattr(data, "__dataclass_fields__"):
+            raw = asdict(data)
+            # Convert enums to values
+            for k, v in list(raw.items()):
+                if isinstance(v, Enum):
+                    raw[k] = v.value
+        elif isinstance(data, dict):
+            raw = data.copy()
+        else:
+            raw = {"value": str(data)}
+        try:
+            cg.add_node(node_id, node_type, content=str(raw.get("value", node_id)), **raw)
+        except Exception as exc:
+            logger.debug("ContextGraph mirror skipped for %s: %s", node_id, exc)
+
+    def _mirror_edge(self, src: str, dst: str, edge_type: str) -> None:
+        """Mirror an edge into the Semantica ContextGraph if backend is active."""
+        if self._semantica_backend is None:
+            return
+        cg = self._semantica_backend.context_graph
+        if cg is None:
+            return
+        try:
+            cg.add_edge(src, dst, edge_type=edge_type)
+        except Exception as exc:
+            logger.debug("ContextGraph mirror edge skipped for %s->%s: %s", src, dst, exc)
 
     def _restore_from_lmdb(self) -> None:
         for node_id, raw in self._lmdb.iter_nodes():
@@ -144,6 +187,8 @@ class CaseGraph:
     def destroy(self) -> None:
         if self._lmdb:
             self._lmdb.destroy()
+        if self._semantica_backend is not None:
+            self._semantica_backend.destroy()
 
     def close(self) -> None:
         if self._lmdb:
@@ -156,6 +201,8 @@ class CaseGraph:
         self._graph.add_edge(self.case_id, source.id, label="HAS_SOURCE")
         self._persist_node(source.id, "source", source.__dict__)
         self._persist_edge(self.case_id, source.id, "HAS_SOURCE", f"{self.case_id}->{source.id}")
+        self._mirror_node(source.id, "source", source)
+        self._mirror_edge(self.case_id, source.id, "HAS_SOURCE")
 
     def add_fact(self, fact: Fact) -> None:
         self._graph.add_node(fact.id, type="fact", data=fact)
@@ -166,6 +213,9 @@ class CaseGraph:
             if sid in self._graph:
                 self._graph.add_edge(sid, fact.id, label="SUPPORTS")
                 self._persist_edge(sid, fact.id, "SUPPORTS", f"{sid}->{fact.id}")
+                self._mirror_edge(sid, fact.id, "SUPPORTS")
+        self._mirror_node(fact.id, "fact", fact)
+        self._mirror_edge(self.case_id, fact.id, "HAS_FACT")
 
     def add_evidence(self, evidence: Evidence) -> None:
         self._graph.add_node(evidence.id, type="evidence", data=evidence)
@@ -177,6 +227,10 @@ class CaseGraph:
         if evidence.fact_id:
             self._graph.add_edge(evidence.fact_id, evidence.id, label="HAS_EVIDENCE")
             self._persist_edge(evidence.fact_id, evidence.id, "HAS_EVIDENCE", f"{evidence.fact_id}->{evidence.id}")
+        self._mirror_node(evidence.id, "evidence", evidence)
+        self._mirror_edge(evidence.source_id, evidence.id, "CONTAINS")
+        if evidence.fact_id:
+            self._mirror_edge(evidence.fact_id, evidence.id, "HAS_EVIDENCE")
 
     def add_relationship(self, rel: Relationship) -> None:
         self._graph.add_node(rel.id, type="relationship", data=rel)
@@ -184,12 +238,16 @@ class CaseGraph:
         self._graph.add_edge(rel.subject_fact_id, rel.object_fact_id, label=rel.predicate)
         self._persist_node(rel.id, "relationship", rel.__dict__)
         self._persist_edge(rel.subject_fact_id, rel.object_fact_id, rel.predicate, f"{rel.subject_fact_id}->{rel.object_fact_id}")
+        self._mirror_node(rel.id, "relationship", rel)
+        self._mirror_edge(rel.subject_fact_id, rel.object_fact_id, rel.predicate)
 
     def add_requirement(self, req: Requirement) -> None:
         self._graph.add_node(req.id, type="requirement", data=req)
         self._graph.add_edge(self.case_id, req.id, label="REQUIRES")
         self._persist_node(req.id, "requirement", req.__dict__)
         self._persist_edge(self.case_id, req.id, "REQUIRES", f"{self.case_id}->{req.id}")
+        self._mirror_node(req.id, "requirement", req)
+        self._mirror_edge(self.case_id, req.id, "REQUIRES")
 
     def add_finding(self, finding: Finding) -> None:
         self._graph.add_node(finding.id, type="finding", data=finding)
@@ -198,6 +256,8 @@ class CaseGraph:
         for fid in finding.fact_ids:
             if fid in self._graph:
                 self._graph.add_edge(fid, finding.id, label="SUPPORTS")
+        self._mirror_node(finding.id, "finding", finding)
+        self._mirror_edge(self.case_id, finding.id, "HAS_FINDING")
 
     # ---- queries ----
 
