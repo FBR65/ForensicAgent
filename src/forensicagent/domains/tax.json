@@ -1,0 +1,54 @@
+{
+  "name": "tax",
+  "label": "Steuerforensik",
+  "categories": [
+    "tax_return", "bank_statement", "invoice", "ledger",
+    "audit_report", "assessment_notice", "correspondence",
+    "identity_document", "template", "metadata", "other"
+  ],
+  "requirements": [
+    {"domain": "tax", "description": "Steuernummer des Steuerpflichtigen", "required_fact_types": ["PERSON", "TAX_CODE"]},
+    {"domain": "tax", "description": "Umsatzsteuer-Betraege belegt", "required_fact_types": ["AMOUNT", "DATE"]},
+    {"domain": "tax", "description": "IBAN-Konsistenz bei Zahlungen", "required_fact_types": ["IBAN"]}
+  ],
+  "rules": [
+    {
+      "id": "tax-1",
+      "name": "Steuernummer vorhanden",
+      "description": "Jeder Steuerpflichtige muss mit Steuernummer identifiziert werden",
+      "fact_types": ["TAX_CODE"],
+      "check": "type:TAX_CODE",
+      "severity": "error"
+    },
+    {
+      "id": "tax-2",
+      "name": "Betrag mit Beleg",
+      "description": "Jeder finanzielle Betrag muss durch eine IBAN oder Rechnung belegt sein",
+      "fact_types": ["AMOUNT"],
+      "check": "has_evidence",
+      "severity": "error"
+    },
+    {
+      "id": "tax-3",
+      "name": "Datum pro Buchung",
+      "description": "Jede Buchung muss ein Datum haben",
+      "fact_types": ["DATE", "GERMAN_DATE"],
+      "check": "has_evidence",
+      "severity": "warning"
+    },
+    {
+      "id": "tax-4",
+      "name": "Mindestkonfidenz",
+      "description": "Fakten unter 0.5 Konfidenz muessen geprueft werden",
+      "fact_types": [],
+      "check": "min_confidence:0.5",
+      "severity": "warning"
+    }
+  ],
+  "entity_patterns": {
+    "TAX_CODE": ["[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]"],
+    "IBAN": ["[A-Z]{2}\\d{2}[A-Z0-9]{11,30}"],
+    "AMOUNT": ["€\\s*\\d+", "EUR\\s*\\d+"],
+    "ACCOUNT": ["\\d{8,12}"]
+  }
+}

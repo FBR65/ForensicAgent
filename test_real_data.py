@@ -59,6 +59,18 @@ CASES = [
             "Gibt es Hinweise auf Scheinrechnungen?",
         ],
     },
+    {
+        "case_id": "TAX-2026-001",
+        "domain": "tax",
+        "dir": BASE / "tax_001" / "evidence",
+        "kb_dir": str(BASE / "tax_001" / "domains" / "tax"),
+        "queries": [
+            "Wer ist der Steuerpflichtige und was ist seine Steuernummer?",
+            "Wie hoch ist die Differenz zwischen erklaertem und tatsaechlichem Umsatz?",
+            "Welche IBAN wurde fuer Zahlungen an Global Trading Ltd genutzt?",
+            "Gibt es Hinweise auf Scheinrechnungen?",
+        ],
+    },
 ]
 
 
@@ -127,7 +139,7 @@ def main() -> None:
     for cfg in CASES:
         run_case(cfg)
     print(f"\n{'='*70}")
-    print("All 3 cases completed.")
+    print("All 4 cases completed.")
     print(f"{'='*70}")
 
 

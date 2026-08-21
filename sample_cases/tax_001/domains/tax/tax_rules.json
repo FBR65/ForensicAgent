@@ -1,0 +1,34 @@
+[
+  {
+    "id": "tax-1",
+    "name": "Steuernummer vorhanden",
+    "description": "Jeder Steuerpflichtige muss mit Steuernummer identifiziert werden",
+    "fact_types": ["TAX_CODE"],
+    "check": "type:TAX_CODE",
+    "severity": "error"
+  },
+  {
+    "id": "tax-2",
+    "name": "Betrag mit Beleg",
+    "description": "Jeder finanzielle Betrag muss durch eine IBAN oder Rechnung belegt sein",
+    "fact_types": ["AMOUNT"],
+    "check": "has_evidence",
+    "severity": "error"
+  },
+  {
+    "id": "tax-3",
+    "name": "Datum pro Buchung",
+    "description": "Jede Buchung muss ein Datum haben",
+    "fact_types": ["DATE", "GERMAN_DATE"],
+    "check": "has_evidence",
+    "severity": "warning"
+  },
+  {
+    "id": "tax-4",
+    "name": "Mindestkonfidenz",
+    "description": "Fakten unter 0.5 Konfidenz muessen geprueft werden",
+    "fact_types": [],
+    "check": "min_confidence:0.5",
+    "severity": "warning"
+  }
+]

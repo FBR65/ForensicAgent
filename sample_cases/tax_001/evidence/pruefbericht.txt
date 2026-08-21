@@ -1,0 +1,71 @@
+Pruefbericht — Steuerstrafverfahren wegen Verdacht auf Umsatzsteuerhinterziehung
+
+Aktenzeichen: STFA-2026-0042
+Pruefzeitraum: Steuerjahre 2023 bis 2025
+Pruefer: Regina Hartmann, Steuerfahnderin
+Finanzamt: Finanzamt Muenchen III
+
+Steuerpflichtiger: Andreas Greiner
+Geburtsdatum: 11.04.1978
+Anschrift: Theresienstr. 27, 80333 Muenchen
+Steuernummer: GRNNDR78B11M834Z
+USt-IdNr.: DE298765432
+
+Unternehmen: Greiner IT-Services, Einzelunternehmen
+Gewerbeanmeldung: 01.03.2018
+Anschrift: Theresienstr. 27, 80333 Muenchen
+
+== VERDACHTSMOMENTE ==
+
+1. Differenz zwischen erklaerten Umsaetzen und Bankzugaengen
+   - Erklaerter Umsatz 2024: EUR 145.000,00
+   - Tatsaechliche Zahlungseingaenge 2024: EUR 198.500,00
+   - Differenz: EUR 53.500,00 (unerklaert)
+
+2. Auffaellige Barauszahlungen
+   - 12 Barauszahlungen zwischen EUR 2.000,00 und EUR 5.000,00
+   - Gesamt: EUR 38.500,00
+   - Buchungstext: "Entnahme private"
+   - Keine Quittungen oder Belege vorhanden
+
+3. Rechnungen an Briefkastenfirmen
+   - 5 Rechnungen an "Global Trading Ltd" mit Sitz in Zypern
+   - IBAN: CY17002001280000003570017694
+   - Rechnungsbetraege: je EUR 8.500,00 (Gesamt: EUR 42.500,00)
+   - Leistung angeblich: IT-Beratung
+   - Global Trading Ltd ist nicht im Handelsregister Zypern auffindbar
+
+4. Vorsteuerabzug aus Scheinrechnungen
+   - Rechnung RE-2024-0112: EUR 14.280,00 netto, EUR 2.713,20 USt
+   - Rechnungssteller: TechConsult Berlin GmbH
+   - TechConsult Berlin GmbH existiert nicht im Handelsregister
+   - Steuernummer auf Rechnung: 133/5821/6421 — nicht vergeben
+
+5. Verdeckte Gewinnausschuettung
+   - Audi Q7 als Betriebsfahrzeug gebucht: EUR 68.500,00
+   - Fahrzeug zu 90% privat genutzt (nach GPS-Auswertung)
+   - Nur 10% betriebliche Nutzung erklaert
+
+== ZUSAMMENFASSUNG DER AUFFAELLIGKEITEN ==
+
+Steuerjahr 2024:
+  Erklaerter Umsatz: EUR 145.000,00
+  Tatsaechlicher Umsatz: EUR 198.500,00
+  Hinterzogene Umsatzsteuer (19%): EUR 10.165,00
+
+Steuerjahr 2023:
+  Erklaerter Umsatz: EUR 132.000,00
+  Tatsaechlicher Umsatz: EUR 171.000,00
+  Hinterzogene Umsatzsteuer (19%): EUR 7.410,00
+
+Gesamtschaetzung hinterzogene Umsatzsteuer: EUR 17.575,00
+Zuzueglich Zinsen und Hinterziehungszuschlag.
+
+== MASSNAHMEN ==
+
+1. Kontenpfändung bei Sparkasse Muenchen, IBAN: DE70700500000034567890
+2. Beschlagnahme der Buchungsblaetter 2023-2025
+3. Auswertung der Bankauszuege (siehe separate Datei)
+4. Pruefung der Rechnungen (siehe separate Datei)
+5. Anfrage bei Handelsregister Zypern bezueglich Global Trading Ltd
+6. Strafanzeige wegen Verdacht der Steuerhinterziehung § 370 AO

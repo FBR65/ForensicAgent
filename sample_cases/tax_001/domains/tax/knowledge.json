@@ -1,0 +1,24 @@
+[{
+  "id": "umsatzsteuer_grundlagen",
+  "title": "Umsatzsteuer-Pflichtangaben nach § 14 Abs. 4 UStG",
+  "body": "Eine ordnungsgemaesse Rechnung muss enthalten: (1) Vollstaendiger Name und Anschrift des leistenden Unternehmers, (2) Steuernummer des leistenden Unternehmers, (3) Ausstellungsdatum, (4) Fortlaufende Rechnungsnummer, (5) Menge und Art der gelieferten Gegenstaende oder Umfang und Art der Leistung, (6) Entgelt und Steuersatz, (7) Ausweis des zu entrichtenden Steuerbetrags. Fehlt einer dieser Pflichtangaben, ist die Rechnung nicht zum Vorsteuerabzug berechtigt. Scheinrechnungen (Rechnungen ohne tatsaechliche Leistung) fuehren zur Steuerhinterziehung nach § 370 AO.",
+  "tags": ["umsatzsteuer", "ustg", "rechnung", "vorsteuerabzug", "scheinrechnung"]
+},
+{
+  "id": "steuerhinterziehung_indikatoren",
+  "title": "Indikatoren fuer Steuerhinterziehung (§ 370 AO)",
+  "body": "Typische Indikatoren: (1) Buchungen ohne Beleg, (2) Nachtraegliche Aenderungen an Steuererklaerungen ohne nachvollziehbaren Grund, (3) Barzahlungen ausserhalb der normalen Geschaeftsablaeufe, (4) Rechnungen an Briefkastenfirmen, (5) Umsatzsteuer-Voranmeldungen mit untypischen Schwankungen, (6) Privatausgaben als Betriebsausgaben gebucht, (7) Umsaetze die nicht mit Bankbewegungen korrelieren, (8) Differenz zwischen er erklaerten Umsaetzen und den tatsaechlichen Zahlungseingaengen. Die forensische Pruefung vergleicht Steuererklaerung, Buchungsblaetter, Bankauszuege und Rechnungen auf Konsistenz.",
+  "tags": ["steuerhinterziehung", "abgabenordnung", "indikatoren", "forensik", "betrug"]
+},
+{
+  "id": "iban_pruefung_steuer",
+  "title": "IBAN-Pruefung im steuerforensischen Kontext",
+  "body": "Bei der steuerforensischen Pruefung werden Ueberweisungen auf Plausibilitaet geprueft: (1) IBAN-Formatvalidierung (Laendercode + Pruefziffer + Bankleitzahl + Kontonummer), (2) Abgleich mit im Handelsregister angegebenen Bankverbindungen, (3) Pruefung auf Briefkastenfirmen-IBANs (insb. auslaendische IBANs ohne Geschaeftsbeziehung), (4) Korrelation von IBAN mit Rechnungssteller. Auffaellig sind Ueberweisungen an IBANs die nicht zum Rechnungssteller passen, sowie wiederkehrende Zahlungen an dieselbe IBAN von unterschiedlichen Rechnungsstellern.",
+  "tags": ["iban", "validierung", "bank", "pruefziffer", "briefkastenfirma"]
+},
+{
+  "id": "betriebsausgaben_pruefung",
+  "title": "Forensische Pruefung von Betriebsausgaben (§ 4 Abs. 5 EStG)",
+  "body": "Betriebsausgaben muessen betrieblich veranlasst sein. Nicht abziehbar sind u.a.: Geschenke ueber EUR 50,00 pro Empfaenger und Jahr, Aufwendungen fuer Gaestehaeuser, Verpflegungsmehraufwendungen ueber die Pauschbetraege hinaus. Forensisch geprueft wird: (1) Existenz des Empfaengers (Impressum, Handelsregister), (2) Betriebsnotwendigkeit der Leistung, (3) Angemessenheit des Entgelts (Fremdvergleich), (4) Zeitpunkt der Leistung (vor oder nach der Buchung?). Verdeckte Gewinnausschuettungen bei Kapitalgesellschaften sind ebenfalls zu pruefen.",
+  "tags": ["betriebsausgaben", "estg", "verdeckte_gewinnausschuettung", "angemessenheit"]
+}]
