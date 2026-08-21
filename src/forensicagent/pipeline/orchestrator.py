@@ -24,10 +24,17 @@ from forensicagent.agents import (
 from forensicagent.domains.config import load_domain
 from forensicagent.models import (
     Fact,
+    Finding,
     Requirement,
     Source,
 )
 from forensicagent.pipeline.graph import CaseGraph
+from forensicagent.pipeline.semantica_backend import is_available, SemanticaBackend
+from forensicagent.pipeline.provenance import ProvenanceTracker
+from forensicagent.pipeline.dedup import EntityDeduplicator
+from forensicagent.pipeline.conflicts import ConflictScanner
+from forensicagent.pipeline.datalog_rules import DatalogValidator
+from forensicagent.pipeline.prov_export import export_provenance
 from forensicagent.utils.bm25 import BM25Index
 
 logger = logging.getLogger(__name__)
@@ -51,12 +58,43 @@ class ForensicPipeline:
         domain: str = "general",
         kb_dirs: list[str] | None = None,
         session_dir: str | None = None,
+        use_semantica: bool = True,
     ) -> None:
         self.case_id = case_id
         self.domain = load_domain(domain)
         self._session_dir = session_dir or tempfile.mkdtemp(prefix=f"forensic-session-{case_id[:8]}-")
-        self._graph = CaseGraph(case_id, lmdb_path=self._session_dir, restore=True)
 
+        # --- Semantica backend (optional) ---
+        self._semantica: SemanticaBackend | None = None
+        if use_semantica and is_available():
+            self._semantica = SemanticaBackend(case_id)
+            logger.info("[%s] Using Semantica backend", case_id)
+        else:
+            logger.info("[%s] Using legacy backend (NetworkX + LMDB)", case_id)
+
+        self._graph = CaseGraph(
+            case_id,
+            lmdb_path=self._session_dir,
+            restore=True,
+            backend=self._semantica,
+        )
+
+        # --- Wrappers ---
+        self._provenance = ProvenanceTracker(
+            self._semantica.provenance if self._semantica else None
+        )
+        self._dedup = EntityDeduplicator(
+            self._semantica.duplicate_detector if self._semantica else None,
+            self._semantica.entity_merger if self._semantica else None,
+        )
+        self._conflict_scanner = ConflictScanner(
+            self._semantica.conflict_detector if self._semantica else None
+        )
+        self._datalog = DatalogValidator(
+            self._semantica.datalog_reasoner if self._semantica else None
+        )
+
+        # --- Agents (unchanged) ---
         self._ingestor = IngestionAgent(case_id)
         self._qc = QualityControlAgent(case_id)
         self._classifier = ClassificationAgent(case_id)
@@ -85,6 +123,8 @@ class ForensicPipeline:
         for s in sources:
             self._graph.add_source(s)
             self._sources_by_id[s.id] = s
+            # S-PROV: track source provenance
+            self._provenance.track_source(s)
         self._ingested = True
         logger.info("Ingested %d sources (%d usable, %d review, %d blocking)",
                     len(sources),
@@ -112,8 +152,32 @@ class ForensicPipeline:
             status = self._evidence_linker.classify_fact(fact, self._sources_by_id.get(fact.source_ids[0], Fact(id="", case_id="", type="", value="")))
             fact.status = status
 
-        # Run validation rules.
-        self._validator.validate_batch(facts)
+        # Run validation rules (S-REASON: use Datalog if available, else legacy).
+        domain_rules = []
+        for r in (self.domain.rules if hasattr(self.domain, 'rules') else []):
+            if hasattr(r, '__dict__'):
+                domain_rules.append({
+                    "id": r.id, "name": r.name, "description": r.description,
+                    "fact_types": r.fact_types, "check": r.check, "severity": r.severity,
+                })
+            else:
+                domain_rules.append(r)
+        if self._semantica:
+            violations = self._datalog.validate(facts, domain_rules)
+            for v in violations:
+                if not v["satisfied"]:
+                    logger.warning("Datalog violation: %s on fact %s", v["rule_id"], v["fact_id"])
+        else:
+            self._validator.validate_batch(facts)
+
+        # S-DEDUP: deduplicate facts across sources.
+        facts = self._dedup.deduplicate_facts(facts)
+
+        # S-PROV: track fact provenance.
+        for fact in facts:
+            src = self._sources_by_id.get(fact.source_ids[0]) if fact.source_ids else None
+            ev = next((e for e in evidence_items if e.fact_id == fact.id), None)
+            self._provenance.track_fact(fact, src, ev)
 
         # Add to graph.
         for fact in facts:
@@ -140,11 +204,20 @@ class ForensicPipeline:
         for req in requirements:
             self._graph.add_requirement(req)
             self._graph.update_requirement_status(req)
+
+        # S-CONFLICT: scan for contradictory facts.
+        if self._semantica:
+            findings = self._conflict_scanner.scan_conflicts(self._graph.all_facts())
+            for finding in findings:
+                self._graph.add_finding(finding)
+                logger.warning("Conflict detected: %s", finding.statement)
+
         self._graph.checkpoint()
-        logger.info("Graph: %d facts, %d evidence, %d requirements",
+        logger.info("Graph: %d facts, %d evidence, %d requirements, %d findings",
                     len(self._graph.all_facts()),
                     len(self._graph.all_evidence()),
-                    len(self._graph.all_requirements()))
+                    len(self._graph.all_requirements()),
+                    len(self._graph.all_findings()))
         return self._graph
 
     def query(self, question: str) -> dict[str, Any]:
@@ -152,7 +225,7 @@ class ForensicPipeline:
         if not self._ingested:
             raise RuntimeError("Call ingest() before query()")
 
-        logger.info("[%s] Phase 7-12: Query → %s", self.case_id, question)
+        logger.info("[%s] Phase 7-12: Query -> %s", self.case_id, question)
         context = self._context_builder.build_context(
             self._graph, question, knowledge_agent=self._knowledge
         )
@@ -161,7 +234,6 @@ class ForensicPipeline:
 
         if not grounding.passed:
             logger.warning("Grounding failed: %s", grounding.summary)
-            # Feed back into graph as review items.
             for claim in grounding.ungrounded_claims:
                 logger.warning("  Ungrounded %s: %s", claim["type"], claim["claim"])
 
@@ -185,6 +257,25 @@ class ForensicPipeline:
         report = self.build_report()
         return self._reporter.export_markdown(report)
 
+    # ---- S-EXPORT: PROV-O export ----
+
+    def export_provenance(self, format: str = "turtle") -> str:
+        """Export case provenance as W3C PROV-O (Turtle/JSON-LD/XML)."""
+        if self._semantica is None:
+            return ""
+        return export_provenance(
+            self._semantica.context_graph,
+            self._semantica.rdf_exporter,
+            format=format,
+        )
+
+    # ---- S-CONFLICT: get conflicts ----
+
+    def get_conflicts(self) -> list[Finding]:
+        """Return all conflict findings detected in the case."""
+        return [f for f in self._graph.all_findings()
+                if f.metadata.get("conflict_type") == "value_mismatch"]
+
     # ---- review / corrections ----
 
     def correct_fact_status(self, fact_id: str, new_status: str) -> Fact | None:
@@ -196,17 +287,11 @@ class ForensicPipeline:
     # ---- knowledge-base authoring ----
 
     def build_kb_document(self, description: str, domain: str | None = None) -> dict[str, Any]:
-        """Help the forensic professional author a KB document via LLM Q&A.
-
-        The professional describes a rule / precedent / procedure; the LLM
-        structures it into a KB entry (JSON) which is written to the KB dir.
-        """
         if self._kb_assistant is None:
-            raise RuntimeError("No kb_dirs configured — pass kb_dirs to ForensicPipeline.")
+            raise RuntimeError("No kb_dirs configured -- pass kb_dirs to ForensicPipeline.")
         doc, path = self._kb_assistant.add_document_from_description(
             description, domain or self.domain.name
         )
-        # Re-index the retrieval agent so the new doc is immediately searchable.
         if self._knowledge is not None:
             self._knowledge.reindex()
         return {"document": doc, "path": str(path)}
@@ -214,9 +299,9 @@ class ForensicPipeline:
     # ---- teardown ----
 
     def close(self) -> None:
-        """Destroy the volatile session (LMDB store is wiped)."""
+        """Destroy the volatile session (LMDB store is wiped, backend destroyed)."""
         self._graph.destroy()
-        logger.info("[%s] Session destroyed — case data purged.", self.case_id)
+        logger.info("[%s] Session destroyed -- case data purged.", self.case_id)
 
     def __enter__(self) -> "ForensicPipeline":
         return self
@@ -231,3 +316,7 @@ class ForensicPipeline:
     @property
     def keyword_agent(self) -> KeywordIndexAgent:
         return self._keyword_agent
+
+    @property
+    def semantica_backend(self) -> SemanticaBackend | None:
+        return self._semantica

@@ -31,7 +31,9 @@ def test_full_pipeline(pipeline):
     pipeline.index_keywords()
     facts, evidence = pipeline.extract_and_link()
     assert len(facts) > 0
-    assert len(evidence) == len(facts)
+    # After dedup, there may be more evidence items than facts
+    # (multiple evidence point to the same merged fact).
+    assert len(evidence) >= len(facts)
 
     pipeline.build_graph()
 
