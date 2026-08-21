@@ -30,6 +30,9 @@ from forensicagent.models import (
 )
 from forensicagent.pipeline.graph import CaseGraph
 from forensicagent.pipeline.semantica_backend import is_available, SemanticaBackend
+from forensicagent.pipeline.semantica_retrieval import SemanticaRetrieval
+from forensicagent.pipeline.semantica_assessment import SemanticaDecisionKit
+from forensicagent.pipeline.semantica_query import SemanticaKGQuery
 from forensicagent.pipeline.provenance import ProvenanceTracker
 from forensicagent.pipeline.dedup import EntityDeduplicator
 from forensicagent.pipeline.conflicts import ConflictScanner
@@ -94,7 +97,16 @@ class ForensicPipeline:
             self._semantica.datalog_reasoner if self._semantica else None
         )
 
-        # --- Agents (unchanged) ---
+        # --- S-RETRIEVE / S-ASSESS / S-QUERY wrappers ---
+        self._semantica_retrieval: SemanticaRetrieval | None = None
+        self._decision_kit: SemanticaDecisionKit | None = None
+        self._kg_query: SemanticaKGQuery | None = None
+        if self._semantica:
+            self._semantica_retrieval = SemanticaRetrieval(self._semantica)
+            self._decision_kit = SemanticaDecisionKit(self._semantica)
+            self._kg_query = SemanticaKGQuery(self._semantica)
+
+        # --- Agents (unchanged except Semantica injection) ---
         self._ingestor = IngestionAgent(case_id)
         self._qc = QualityControlAgent(case_id)
         self._classifier = ClassificationAgent(case_id)
@@ -102,10 +114,13 @@ class ForensicPipeline:
         self._fact_extractor = FactExtractionAgent(case_id)
         self._evidence_linker = EvidenceLinkingAgent(case_id)
         self._validator = ValidationAgent(case_id, domain=domain)
-        self._knowledge = KnowledgeRetrievalAgent(case_id, kb_dirs=kb_dirs) if kb_dirs else None
+        self._knowledge = KnowledgeRetrievalAgent(
+            case_id, kb_dirs=kb_dirs,
+            semantica_retrieval=self._semantica_retrieval,
+        ) if kb_dirs else None
         self._kb_assistant = KnowledgeBaseAgent(case_id, kb_dirs=kb_dirs) if kb_dirs else None
-        self._context_builder = ContextBuilderAgent(case_id)
-        self._assessor = AssessmentAgent(case_id, self._graph)
+        self._context_builder = ContextBuilderAgent(case_id, kg_query=self._kg_query)
+        self._assessor = AssessmentAgent(case_id, self._graph, decision_kit=self._decision_kit)
         self._grounder = GroundingAgent(case_id, self._graph)
         self._reporter = ReportingAgent(case_id, self._graph)
         self._reviewer = ReviewAgent(case_id, self._graph)
@@ -276,6 +291,29 @@ class ForensicPipeline:
         return [f for f in self._graph.all_findings()
                 if f.metadata.get("conflict_type") == "value_mismatch"]
 
+    # ---- S-DECISION: trace decision chain ----
+
+    def trace_decision(self, decision_id: str) -> dict[str, Any]:
+        """Trace the causal chain for a recorded decision.
+
+        Returns a dict with the chain steps and upstream causal decisions.
+        Returns an empty dict when Semantica is not available.
+        """
+        if self._decision_kit is None or not self._decision_kit.is_available():
+            return {}
+        chain = self._decision_kit.trace_decision_chain(decision_id)
+        causal = self._decision_kit.get_causal_chain(decision_id, direction="upstream")
+        return {
+            "decision_id": decision_id,
+            "chain_steps": chain,
+            "upstream_causal": [
+                {"category": getattr(d, "category", "?"),
+                 "outcome": getattr(d, "outcome", "?"),
+                 "scenario": getattr(d, "scenario", "?")}
+                for d in causal
+            ],
+        }
+
     # ---- review / corrections ----
 
     def correct_fact_status(self, fact_id: str, new_status: str) -> Fact | None:
@@ -320,3 +358,15 @@ class ForensicPipeline:
     @property
     def semantica_backend(self) -> SemanticaBackend | None:
         return self._semantica
+
+    @property
+    def semantica_retrieval(self) -> SemanticaRetrieval | None:
+        return self._semantica_retrieval
+
+    @property
+    def decision_kit(self) -> SemanticaDecisionKit | None:
+        return self._decision_kit
+
+    @property
+    def kg_query(self) -> SemanticaKGQuery | None:
+        return self._kg_query

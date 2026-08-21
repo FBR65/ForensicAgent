@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, Optional
 
 from forensicagent.agents.base import BaseAgent
 from forensicagent.pipeline.graph import CaseGraph
@@ -28,13 +28,25 @@ class AssessmentAgent(BaseAgent):
 
     If no OpenAI API key is set, the agent falls back to a deterministic
     graph-reasoning mode that simply queries confirmed facts.
+
+    S-ASSESS / S-DECISION: When a
+    :class:`~forensicagent.pipeline.semantica_assessment.SemanticaDecisionKit`
+    is supplied, decisions are recorded in the Semantica ContextGraph with
+    causal chains, enabling ``trace_decision_chain()`` and
+    ``find_precedents()``.
     """
 
     name = "assessment"
 
-    def __init__(self, case_id: str, graph: CaseGraph) -> None:
+    def __init__(
+        self,
+        case_id: str,
+        graph: CaseGraph,
+        decision_kit: Optional[Any] = None,
+    ) -> None:
         super().__init__(case_id)
         self._graph = graph
+        self._decision_kit = decision_kit
         self._llm: Agent | None = None
         if _AGNO_AVAILABLE and os.getenv("OPENAI_API_KEY"):
             self._llm = Agent(
@@ -56,7 +68,10 @@ class AssessmentAgent(BaseAgent):
             try:
                 response = self._llm.run(context, stream=False)
                 answer = response.content if hasattr(response, "content") else str(response)
-                return {"mode": "llm", "answer": answer, "context_used": True}
+                result = {"mode": "llm", "answer": answer, "context_used": True}
+                # S-ASSESS: record the LLM-based decision.
+                self._record_assessment(query, answer, "llm")
+                return result
             except Exception as exc:
                 logger.warning("LLM failed, falling back to deterministic mode: %s", exc)
 
@@ -65,9 +80,9 @@ class AssessmentAgent(BaseAgent):
         q_lower = query.lower()
         # Meaningful query terms (skip short/common words after strip).
         q_terms = [
-            w.strip(".,?;:!\'\"")
+            w.strip(".,?;:!'\"")
             for w in q_lower.split()
-            if len(w.strip(".,?;:!\'\"")) >= 3
+            if len(w.strip(".,?;:!'\"")) >= 3
         ]
 
         import re as _re
@@ -92,7 +107,38 @@ class AssessmentAgent(BaseAgent):
                 f"Confirmed fact types available: {confirmed_types}. "
                 "Further investigation is required."
             )
-        return {"mode": "deterministic", "answer": answer, "confirmed_facts": [f.id for f in relevant]}
+        result = {"mode": "deterministic", "answer": answer, "confirmed_facts": [f.id for f in relevant]}
+        # S-ASSESS: record the deterministic decision.
+        self._record_assessment(query, answer, "deterministic", relevant)
+        return result
+
+    def _record_assessment(
+        self,
+        query: str,
+        answer: str,
+        mode: str,
+        relevant_facts: list | None = None,
+    ) -> None:
+        """S-ASSESS/S-DECISION: Record this assessment as a decision in the
+        Semantica ContextGraph.  No-op when no decision kit is available.
+        """
+        if self._decision_kit is None or not self._decision_kit.is_available():
+            return
+        try:
+            entities = [f.id for f in (relevant_facts or [])]
+            dec_id = self._decision_kit.record_decision(
+                category="assessment",
+                scenario=query[:200],
+                reasoning=answer[:500],
+                outcome=mode,
+                confidence=0.85 if mode == "llm" else 0.75,
+                entities=entities,
+                decision_maker="AssessmentAgent",
+            )
+            if dec_id:
+                logger.info("Assessment decision recorded: %s", dec_id)
+        except Exception as exc:
+            logger.warning("Failed to record assessment decision: %s", exc)
 
     def run(self, *args, **kwargs):
         return {"status": "ok", "data": {}}

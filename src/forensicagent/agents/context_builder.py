@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from forensicagent.agents.base import BaseAgent
 from forensicagent.models import Fact, Requirement, Source
@@ -18,12 +18,22 @@ class ContextBuilderAgent(BaseAgent):
     - Facts whose status is CONFIRMED or APPROVED (never CANDIDATE / REJECTED)
     - Requirement satisfaction map
     - Domain rules
-    - Relevant knowledge-base snippets (retrieved via BM25)
+    - Relevant knowledge-base snippets (retrieved via BM25 or GraphRAG)
 
     Rejected or unproven data is explicitly *excluded*.
+
+    S-QUERY: When a
+    :class:`~forensicagent.pipeline.semantica_query.SemanticaKGQuery`
+    is supplied, graph-based query results from the Semantica ContextGraph
+    are included in the context, providing multi-hop related facts and
+    entities that the BM25 path alone would miss.
     """
 
     name = "context_builder"
+
+    def __init__(self, case_id: str, kg_query: Optional[Any] = None) -> None:
+        super().__init__(case_id)
+        self._kg_query = kg_query
 
     def build_context(
         self,
@@ -60,6 +70,18 @@ class ContextBuilderAgent(BaseAgent):
                 body = r.get("body", "")[:500].replace("\n", " ")
                 kb_lines.append(f"  - [{r['id']}] {body}")
 
+        # S-QUERY: Graph-based query results from Semantica ContextGraph.
+        graph_query_lines: list[str] = []
+        if self._kg_query is not None and self._kg_query.is_available():
+            try:
+                graph_results = self._kg_query.query_graph(query)
+                for r in graph_results[:max_kb_snippets]:
+                    content = r.get("content", "")[:300].replace("\n", " ")
+                    node_id = r.get("id", r.get("node", {}).get("id", "?"))
+                    graph_query_lines.append(f"  - [graph:{node_id}] {content}")
+            except Exception as exc:
+                logger.warning("S-QUERY graph query failed: %s", exc)
+
         sources = graph.all_sources()
         src_summary = "\n".join(
             f"  - {s.id}: {s.metadata.get('filename', 'unknown')} "
@@ -84,6 +106,7 @@ class ContextBuilderAgent(BaseAgent):
             f"## CONFIRMED FACTS\n" + "\n".join(fact_lines) + "\n\n"
             f"## REQUIREMENTS\n" + "\n".join(req_lines) + "\n\n"
             f"## DOMAIN KNOWLEDGE (retrieved)\n" + "\n".join(kb_lines) + "\n\n"
+            f"## GRAPH QUERY RESULTS (S-QUERY)\n" + "\n".join(graph_query_lines) + "\n\n"
             f"## QUERY\n{query}\n\n"
             "## ANSWER (cite fact ids):\n"
         )

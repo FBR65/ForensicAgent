@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from forensicagent.agents.base import BaseAgent
 from forensicagent.utils.bm25 import BM25Index
@@ -15,17 +15,25 @@ class KnowledgeRetrievalAgent(BaseAgent):
     """RAG over a *persistent* domain knowledge base (statutes, procedures,
     templates, precedents).  The KB is separate from the volatile case graph.
 
-    The KB is tokenised and indexed with BM25 at init.  Queries are
-    answered by BM25 ranking.
+    When a :class:`~forensicagent.pipeline.semantica_retrieval.SemanticaRetrieval`
+    instance is supplied via *semantica_retrieval*, queries first go through
+    Multi-hop GraphRAG over the Semantica ContextGraph.  If GraphRAG yields
+    no results, the query falls back to BM25 ranking (S-RETRIEVE).
     """
 
     name = "knowledge_retrieval"
 
-    def __init__(self, case_id: str, kb_dirs: list[str | Path] | None = None) -> None:
+    def __init__(
+        self,
+        case_id: str,
+        kb_dirs: list[str | Path] | None = None,
+        semantica_retrieval: Optional[Any] = None,
+    ) -> None:
         super().__init__(case_id)
         self._kb_dirs = [Path(d) for d in (kb_dirs or [])]
         self._documents: list[dict[str, Any]] = []
         self._bm25: BM25Index | None = None
+        self._semantica_retrieval = semantica_retrieval
         if self._kb_dirs:
             self._load_kb(self._kb_dirs)
 
@@ -76,6 +84,33 @@ class KnowledgeRetrievalAgent(BaseAgent):
         logger.info("Knowledge base indexed: %d documents", len(self._documents))
 
     def retrieve(self, query: str, top_k: int = 10) -> list[dict[str, Any]]:
+        """Retrieve documents for *query*.
+
+        S-RETRIEVE: When Semantica retrieval is available, first try
+        Multi-hop GraphRAG.  If it returns results, they are returned as-is
+        (content + score + source).  If GraphRAG yields nothing, fall back
+        to BM25 ranking over the local KB documents.
+        """
+        # --- S-RETRIEVE: GraphRAG primary path ---
+        if self._semantica_retrieval is not None and self._semantica_retrieval.is_available():
+            try:
+                graph_results = self._semantica_retrieval.retrieve(query, max_results=top_k)
+                if graph_results:
+                    return [
+                        {
+                            "id": r.metadata.get("node_id", r.source or ""),
+                            "title": r.content[:80],
+                            "body": r.content,
+                            "source": r.source or "graph",
+                            "score": r.score,
+                            "tags": [],
+                        }
+                        for r in graph_results
+                    ]
+            except Exception as exc:
+                logger.warning("GraphRAG retrieval failed, falling back to BM25: %s", exc)
+
+        # --- BM25 fallback ---
         if not self._bm25:
             return []
         results = self._bm25.search(query, top_k)
