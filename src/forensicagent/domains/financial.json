@@ -1,0 +1,21 @@
+{
+  "name": "financial",
+  "label": "Finanzielle Forensik",
+  "categories": [
+    "financial_record", "bank_statement", "invoice",
+    "ledger", "audit_report", "correspondence",
+    "identity_document", "template", "metadata", "other"
+  ],
+  "requirements": [
+    {"domain": "financial", "description": "Identitaet des Beschuldigten", "required_fact_types": ["PERSON", "TAX_CODE"]},
+    {"domain": "financial", "description": "Betrag mit IBAN-Bezug", "required_fact_types": ["AMOUNT", "IBAN"]},
+    {"domain": "financial", "description": "Datums-Konsistenz", "required_fact_types": ["DATE"]}
+  ],
+  "rules": [],
+  "entity_patterns": {
+    "IBAN": ["[A-Z]{2}\\d{2}[A-Z0-9]{11,30}"],
+    "TAX_CODE": ["[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]"],
+    "AMOUNT": ["€\\s*\\d+", "EUR\\s*\\d+"],
+    "ACCOUNT": ["\\d{8,12}"]
+  }
+}

@@ -1,0 +1,73 @@
+Incident Response Report — Ransomware-Angriff
+
+Vorfall-ID: INC-2026-0312
+Unternehmen: TechNova Solutions GmbH
+Anschrift: Silicon Valley 5, 41769 Viersen
+IT-Leiter: Stefan Weber
+Telefon: +49 2162 1234567
+Email: s.weber@technova.de
+
+== ZUSAMMENFASSUNG ==
+
+Am 18.03.2026 um 03:47:32 UTC wurde ein Ransomware-Angriff auf die
+Infrastruktur der TechNova Solutions GmbH erkannt.
+Der Angriff begann am 17.03.2026 um 22:14:08 UTC mit einem
+Phishing-Email an den Mitarbeiter Andreas Klein.
+Die Ransomware verschluesselte 4 Server und 12 Workstations.
+Der Schaden wird auf EUR 250.000,00 geschaetzt
+(Stillstandskosten: EUR 180.000,00, Wiederherstellung: EUR 70.000,00).
+
+== BETROFFENE SYSTEME ==
+
+Server:
+  SRV-DC01    — Domain Controller (Windows Server 2019)
+  SRV-FS02    — Fileserver (Windows Server 2022)
+  SRV-EX03    — Exchange Server (Windows Server 2019)
+  SRV-APP04   — Application Server (Ubuntu 22.04)
+
+Workstations:
+  WS-HR-01 bis WS-HR-04    — HR-Abteilung
+  WS-FIN-01 bis WS-FIN-04  — Finanzabteilung
+  WS-DEV-01 bis WS-DEV-04  — Entwicklung
+
+== ANGRIFFSZEITLEISTE ==
+
+2026-03-17T22:14:08Z  Phishing-Email empfangen (Andreas Klein)
+2026-03-17T22:31:55Z  Oeffnen des Malware-Anhangs auf WS-HR-01
+2026-03-17T22:35:12Z  C2-Verbindung zu 185.220.101.34
+2026-03-17T23:02:44Z  Lateral Movement: WS-HR-01 -> SRV-DC01
+2026-03-18T01:15:30Z  Credential Dumping auf SRV-DC01
+2026-03-18T02:44:18Z  Deployment der Ransomware auf SRV-FS02
+2026-03-18T03:12:07Z  Verschluesselung beginnt auf SRV-FS02
+2026-03-18T03:47:32Z  Erkennung durch Monitoring-Alert
+2026-03-18T04:01:55Z  Netzwerkisolation aller Systeme
+
+== INDIKATOREN DER KOMPROMITTIERUNG (IOCs) ==
+
+IP-Adressen:
+  185.220.101.34    — C2-Server (Tor Exit Node)
+  45.133.1.197      — Phishing-Domain IP
+  91.218.114.52     — Exfiltration-Server
+
+Datei-Hashes (SHA-256):
+  3a7b...e9f2       — ransomware.exe
+  8c2d...4a1b       — cobalt_strike_beacon.dll
+
+Mutationsdatum: 2026-03-18T03:12:07Z
+
+== ERKENNTE SCHWACHSTELLEN ==
+
+1. Keine MFA auf RDP-Verbindungen (Port 3389 offen im Internet)
+2. Veraltete Exchange-Server (CVE-2026-1234 nicht gepatcht)
+3. Fehlende Netzwerksegmentierung zwischen HR und Servernetz
+4. Keine Application Whitelisting auf Workstations
+5. Virenschutz-Definitionen 14 Tage veraltet
+
+== MASSNAHMEN ==
+
+1. Netzwerkisolation aller betroffenen Systeme
+2. Abschaltung von SRV-DC01, SRV-FS02, SRV-EX03, SRV-APP04
+3. Forensische Images aller betroffenen Systeme
+4. Reset aller Domain-Accounts und Service-Passwoerter
+5. Wiederherstellung aus Offline-Backups (Stand: 16.03.2026)
+6. Meldung an BSI und Landesdatenschutzbeauftragten

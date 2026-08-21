@@ -1,0 +1,18 @@
+[{
+  "id": "zivilprozess_grundlagen",
+  "title": "Grundlagen eines Zivilprozesses wegen Arbeitsplatzunfall",
+  "body": "Ein Arbeitsplatzunfall fuehrt regulaer zu einem Zivilprozess auf Schadensersatz nach § 823 BGB. Der Kläger muss darlegen und beweisen, dass der Beklagte eine Verkehrspflicht verletzt hat, hierdurch ein Schaden entstanden ist und die Pflichtverletzung fuer den Schaden kausal war. Das Gericht prueft zunaechst die Schlüssigkeit der Klage, dann die Beweisaufnahme. Ein gerichtliches Gutachten ist Beweismittel, kein Beweis — es muss vom Gericht gewuerdigt werden. Zeugenaussagen haben vor Gericht nur Beweiswert, wenn der Zeuge den Vorfall persoenlich wahrgenommen hat. Hoerensagen ist nicht zulässig.",
+  "tags": ["zivilrecht", "arbeitsplatzunfall", "schadensersatz", "bgb"]
+},
+{
+  "id": "schadensberechnung",
+  "title": "Schadensberechnung im Arbeitsunfallprozess",
+  "body": "Der Schaden umfasst Heilbehandlungskosten, Verdienstausfall, Schmerzensgeld und ggf. Haushaltsfuehrungsschaden. Heilbehandlungskosten muessen durch Rechnungen oder Krankenhausabrechnungen belegt sein. Der Verdienstausfall berechnet sich aus dem Nettoeinkommen vor dem Unfall abzueglich eventueller Lohnfortzahlung. Schmerzensgeld wird nach dem Dassler-Beck-Eschertabelle geschaetzt, wenn eine koerperliche Verletzung vorliegt. Der Schmerzensgeldanspruch setzt eine Verletzung des Koerpers oder der Gesundheit voraus.",
+  "tags": ["schadensersatz", "schmerzensgeld", "verdienstausfall", "berechnung"]
+},
+{
+  "id": "beweislast_arbeitsunfall",
+  "title": "Beweislast bei Arbeitsplatzunfall",
+  "body": "Bei einem Arbeitsplatzunfall trifft den Arbeitgeber eine gesteigerte Beweislast hinsichtlich der Einhaltung von Sicherheitsvorschriften. Der Arbeitgeber muss beweisen, dass er die erforderlichen Schutzmaßnahmen getroffen hat (§ 618 BGB). Gelingt dieser Beweis nicht, wird vermutet, dass die Pflichtverletzung fuer den Unfall kausal war. Ein gerichtliches Gutachten zur Kausalitaet ist regulaer erforderlich. Die Beweislast fuer die Schadenshoehe liegt beim Klaeger, der die einzelnen Schadenspositionen substantiiert darlegen muss.",
+  "tags": ["beweislast", "arbeitgeber", "sicherheitsvorschriften", "kausalitaet"]
+}]

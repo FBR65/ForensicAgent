@@ -1,0 +1,21 @@
+{
+  "name": "legal",
+  "label": "Rechtliche Forensik",
+  "categories": [
+    "court_filing", "expert_report", "witness_statement",
+    "medical_record", "invoice", "correspondence",
+    "identity_document", "template", "metadata", "other"
+  ],
+  "requirements": [
+    {"domain": "legal", "description": "Partei-Identitaet", "required_fact_types": ["PERSON", "DATE"]},
+    {"domain": "legal", "description": "Gerichtsaktenzeichen", "required_fact_types": ["COURT_REF"]},
+    {"domain": "legal", "description": "Schadenshoehe belegt", "required_fact_types": ["AMOUNT"]}
+  ],
+  "rules": [],
+  "entity_patterns": {
+    "COURT_REF": ["Az.\\s+\\d+\\s+[A-Z]\\s+\\d+/\\d+"],
+    "PERSON": [],
+    "DATE": [],
+    "AMOUNT": []
+  }
+}

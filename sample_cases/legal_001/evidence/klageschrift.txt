@@ -1,0 +1,65 @@
+Klagschrift — Arbeitsplatzunfall
+
+Gerichtsaktenzeichen: Az. 2 O 415/2026
+Gericht: Landgericht Berlin — Zivilkammer 4
+Datum: 14.03.2026
+
+Kläger: Thomas Becker
+Geburtsdatum: 22.07.1981
+Anschrift: Goethestr. 12, 10625 Berlin
+Steuernummer: BCKRTH81L22G123X
+
+Beklagte: Bauunternehmen Himmel & Erde GmbH
+Geschäftsführer: Wolfgang Schmidt
+Anschrift: Industrieallee 78, 12359 Berlin
+Steuernummer: HEGMBH78B1234Y
+
+== SACHVERHALT ==
+
+Am 10.01.2026 um 09:15 Uhr ereignete sich auf der Baustelle
+Linden-Center, Frankfurt/Oder ein Arbeitsunfall.
+Der Kläger war als Dachdecker auf dem Gerüst in ca. 8 Metern Höhe tätig.
+Das Gerüst wies an der Ostseite keine ausreichenden Seitenschutzvorrichtungen auf.
+Der Kläger verlor das Gleichgewicht und stürzte ca. 6 Meter in die Tiefe.
+
+== SCHADENSPOSITIONEN ==
+
+1. Krankenhausbehandlung: EUR 28.450,00
+   - Notoperation, 5 Tage Intensivstation, 12 Tage Normalstation
+   - Unfallkrankenhaus Berlin-Marzahn, Datum: 10.01.2026 bis 27.01.2026
+
+2. Verdienstausfall: EUR 15.300,00
+   - Nettoeinkommen vor Unfall: EUR 3.500,00 monatlich
+   - Lohnfortzahlung: 6 Wochen (bis 21.02.2026)
+   - Ausfall danach: 10.02.2026 bis 31.05.2026
+
+3. Schmerzensgeld: EUR 50.000,00
+   - geschätzter Anspruch nach Dassler-Beck-Eschertabelle
+   - Schwere Verletzung: Beckenbruch, Rippenbrüche, Schädelhirntrauma
+
+4. Haushaltsfuehrungsschaden: EUR 4.200,00
+   - 14 Wochen eingeschränkte Haushaltsfuehrung
+   - Haushaltshilfe: EUR 300,00 pro Woche
+
+Gesamtschaden: EUR 97.950,00
+
+== RECHTLICHE WÜRDIGUNG ==
+
+Der Kläger macht Schadensersatzansprüche nach § 823 Abs. 1 BGB,
+§§ 618, 249 ff. BGB geltend.
+Die Beklagte hat ihre Verkehrspflichten aus § 618 BGB verletzt,
+indem das Gerüst nicht mit ausreichendem Seitenschutz ausgestattet war.
+Die Kausalität zwischen Pflichtverletzung und Schaden ist gegeben.
+Die Beweislast für die Einhaltung der Sicherheitsvorschriften
+trifft die Beklagte.
+
+Zeugen:
+  Zeuge 1: Petra Hoffmann, Bauarbeiterin, Datum der Aussage: 15.02.2026
+  Zeuge 2: Frank Müller, Gerüstbauer, Datum der Aussage: 18.02.2026
+
+Beweismittel:
+  - Gerichtliches Gutachten (siehe separate Datei)
+  - Zeugenaussagen (siehe separate Datei)
+  - Krankenhausbericht (Unfallkrankenhaus Berlin-Marzahn)
+  - Lohnabrechnungen Oktober 2025 bis Dezember 2025
+  - Fotos der Baustelle (Blatt 1-12 der Akte)

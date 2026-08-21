@@ -1,0 +1,20 @@
+{
+  "name": "cyber",
+  "label": "Cyber-Forensik",
+  "categories": [
+    "log_file", "incident_report", "forensic_report",
+    "firewall_log", "server_log", "network_capture",
+    "identity_document", "template", "metadata", "other"
+  ],
+  "requirements": [
+    {"domain": "cyber", "description": "IP-Adresse mit Log-Beleg", "required_fact_types": ["IP_ADDRESS"]},
+    {"domain": "cyber", "description": "Geraet-Identifikation", "required_fact_types": ["DEVICE_ID"]},
+    {"domain": "cyber", "description": "Zeitstempel-Konsistenz", "required_fact_types": ["TIMESTAMP"]}
+  ],
+  "rules": [],
+  "entity_patterns": {
+    "IP_ADDRESS": ["\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"],
+    "DEVICE_ID": ["SRV-\\w+", "FW-\\w+", "WS-\\w+"],
+    "TIMESTAMP": ["\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"]
+  }
+}

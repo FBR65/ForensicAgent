@@ -1,0 +1,34 @@
+[
+  {
+    "id": "financial-1",
+    "name": "Identitaet des Beschuldigten",
+    "description": "Der Beschuldigte muss mit Name und Steuernummer identifiziert werden",
+    "fact_types": ["PERSON", "TAX_CODE"],
+    "check": "type:PERSON",
+    "severity": "error"
+  },
+  {
+    "id": "financial-2",
+    "name": "Jeder Betrag mit IBAN-Bezug",
+    "description": "Jeder finanzielle Betrag muss mit einer IBAN oder Rechnung verknuepft sein",
+    "fact_types": ["AMOUNT", "IBAN"],
+    "check": "has_evidence",
+    "severity": "error"
+  },
+  {
+    "id": "financial-3",
+    "name": "Datums-Konsistenz",
+    "description": "Jede Buchung muss ein Datum haben",
+    "fact_types": ["DATE", "GERMAN_DATE"],
+    "check": "has_evidence",
+    "severity": "warning"
+  },
+  {
+    "id": "financial-4",
+    "name": "Mindestkonfidenz",
+    "description": "Fakten unter 0.5 Konfidenz muessen geprueft werden",
+    "fact_types": [],
+    "check": "min_confidence:0.5",
+    "severity": "warning"
+  }
+]

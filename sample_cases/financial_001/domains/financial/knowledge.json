@@ -1,0 +1,18 @@
+[{
+  "id": "betrugserkennung_buchhaltung",
+  "title": "Indikatoren fuer Buchhaltungsbetrug",
+  "body": "Typische Indikatoren fuer Buchhaltungsbetrug: (1) Buchungen ohne Beleg, (2) Rundungsbetraege die untypisch sind, (3) Buchungen ausserhalb der Geschäftszeiten, (4) Dublette Rechnungsnummern, (5) Bankueberweisungen an unbekannte Konten, (6) Abweichungen zwischen Rechnungssumme und Zahlungssumme, (7) Haeufige Korrekturbuchungen. Die forensische Pruefung vergleicht Buchungsblatt, Bankauszuege und Rechnungen auf Konsistenz. Jede Abweichung ist ein Red Flag und muss einzeln untersucht werden.",
+  "tags": ["betrug", "buchhaltung", "indikatoren", "forensik"]
+},
+{
+  "id": "iban_pruefung",
+  "title": "IBAN-Validierung im forensischen Kontext",
+  "body": "Eine IBAN besteht aus Laendercode (2 Buchstaben), Pruefziffer (2 Ziffern), Bankleitzahl und Kontonummer. Die forensische Pruefung umfasst: (1) Formatvalidierung, (2) Pruefziffernberechnung (Modulo 97), (3) Abgleich mit bekannten Bankleitzahlen, (4) Vergleich mit im Fall bekannten Konten. Auffaellig sind Ueberweisungen an auslaendische IBANs ohne Geschäftsbeziehung sowie Ueberweisungen an IBANs die nach Pruefziffer ungueltig sind.",
+  "tags": ["iban", "validierung", "bank", "pruefziffer"]
+},
+{
+  "id": "rechnungspraefung",
+  "title": "Forensische Rechnungspruefung",
+  "body": "Eine forensische Rechnungspruefung prueft: (1) Vorhandensein aller Pflichtangaben (§ 14 Abs. 4 UStG), (2) Konsistenz von Rechnungssumme und ausgewiesener Umsatzsteuer, (3) Abgleich mit Liefer- oder Leistungsdatum, (4) Existenz des Rechnungsstellers (Impressum, Handelsregister), (5) Plausibilitaet des Leistungsgegenstands. Scheinrechnungen sind ein haeufiges Instrument fuer Steuerhinterziehung und Geldwaesche. Die forensische Pruefung sollte immer die Bankverbindung der Rechnung mit der im Handelsregister angegebenen vergleichen.",
+  "tags": ["rechnung", "umsatzsteuer", "scheinrechnung", "geldwaesche"]
+}]

@@ -1,0 +1,85 @@
+Pruefbericht — Betrugsverdacht Buchhaltung
+
+Aktenzeichen: PRF-2026-0078
+Pruefdatum: 12.06.2026
+Pruefer: Sabine Vogt, Wirtschaftsprueferin
+Mandant: Müller Elektrotechnik GmbH & Co. KG
+Anschrift: Gewerbestraße 33, 85055 Ingolstadt
+Steuernummer: MUELEK81B2345K
+
+Beschuldigter: Jürgen Wagner
+Position: Buchhalter (seit 01.03.2019)
+Geburtsdatum: 03.11.1975
+Anschrift: Schillerweg 7, 85072 Eichstätt
+Steuernummer: WGNJGN75R03E084Z
+
+== VERDACHTSMOMENTE ==
+
+1. Auffällige Ueberweisungen an unbekannte IBANs
+2. Buchungen ohne corresponding Beleg
+3. Rechnungen mit identischen Betraegen von unterschiedlichen Rechnungsstellern
+4. Buchungen ausserhalb der Geschäftszeiten
+5. Haeufige Korrekturbuchungen durch Herrn Wagner
+
+== AUFFAELLIGE BUCHUNGEN ==
+
+Buchung 1:
+  Datum: 15.01.2026
+  Betrag: EUR 12.500,00
+  Von: DE89370400440532013000 (Müller Elektrotechnik Geschäftskonto)
+  An: DE71500105179423614829 (unbekannt, TechConsult Pro GmbH)
+  Buchungstext: IT-Beratungsleistung Q4/2025
+  Beleg: Rechnung RE-2026-0042 (vorhanden, aber unplausicbel)
+  Bemerkung: TechConsult Pro GmbH nicht im Handelsregister auffindbar
+
+Buchung 2:
+  Datum: 22.01.2026
+  Betrag: EUR 12.500,00
+  Von: DE89370400440532013000 (Müller Elektrotechnik Geschäftskonto)
+  An: DE48500105169874125369 (unbekannt, Digital Solutions AG)
+  Buchungstext: Wartungsvertrag IT-Infrastruktur
+  Beleg: Rechnung RE-2026-0051 (vorhanden, identischer Betrag wie Buchung 1)
+
+Buchung 3:
+  Datum: 05.02.2026
+  Betrag: EUR 8.750,00
+  Von: DE89370400440532013000 (Müller Elektrotechnik Geschäftskonto)
+  An: DE71500105179423614829 (gleiche IBAN wie Buchung 1!)
+  Buchungstext: Software-Lizenzierung
+  Beleg: keine Rechnung vorhanden
+
+Buchung 4:
+  Datum: 18.02.2026
+  Betrag: EUR 12.500,00
+  Von: DE89370400440532013000 (Müller Elektrotechnik Geschäftskonto)
+  An: DE38200700200569874123 (unbekannt, Cloud Services UG)
+  Buchungstext: Cloud-Migration Januar 2026
+  Beleg: Rechnung RE-2026-0078 (vorhanden, wieder EUR 12.500,00)
+
+Buchung 5:
+  Datum: 03.03.2026
+  Betrag: EUR 5.300,00
+  Von: DE89370400440532013000 (Müller Elektrotechnik Geschäftskonto)
+  An: DE71500105179423614829 (gleiche IBAN wie Buchung 1 und 3!)
+  Buchungstext: IT-Schulung Mitarbeitende
+  Beleg: Rechnung RE-2026-0095
+
+Gesamtauffälliges Volumen: EUR 51.550,00
+
+== WEITERE AUFFAELLIGKEITEN ==
+
+- Herr Wagner hat alle 5 Buchungen persönlich freigegeben
+- Die Freigaben erfolgten teilweise ausserhalb der Geschäftszeiten (20:47, 21:15, 06:03)
+- Die IBAN DE71500105179423614829 erscheint 3x — die zugehörige
+  Firma TechConsult Pro GmbH ist nicht im Handelsregister eingetragen
+- Die Rechnungen RE-2026-0042 und RE-2026-0051 haben identische Beträge
+  und aehnlichen Wortlaut, stammen aber von unterschiedlichen angeblichen Firmen
+- Die Umsatzsteuer-IDs auf den Rechnungen sind nicht validierbar
+
+== EMPFEHLUNG ==
+
+1. Sofortige Suspendierung von Herrn Wagner
+2. Forensische Auswertung aller Buchungen der letzten 24 Monate
+3. Pruefung aller Rechnungen von TechConsult Pro GmbH und Digital Solutions AG
+4. Strafanzeige wegen Betrugsverdacht § 263 StGB
+5. Meldung an die Steuerfahndung

@@ -14,11 +14,24 @@ logger = logging.getLogger(__name__)
 
 # Regex patterns for claims that MUST be grounded.
 # AMOUNT requires an explicit currency marker — no bare numbers.
-_AMOUNT_RE = re.compile(r"(?:[$€£]|USD|EUR|GBP)\s*\d{1,3}(?:[,.]\d{3})*(?:\.\d{2})?\b")
+_AMOUNT_RE = re.compile(r"(?:[$€£]|USD|EUR|GBP)\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\b"
+                        r"|\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\s*(?:[$€£]|USD|EUR|GBP)\b")
 _TAX_CODE_RE = re.compile(r"\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b")
-_DATE_RE = re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b|\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b")
+_DATE_RE = re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b"
+                       r"|\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b"
+                       r"|\b\d{4}-\d{2}-\d{2}\b")
 _IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b")
+_COURT_REF_RE = re.compile(r"\b\d{1,2}\s+[A-Z]{1,2}\s+\d{1,4}/\d{2,4}\b"
+                           r"|\bI\s+[A-Z]{1,2}\s+\d{1,4}/\d{2,4}\b")
+_TIMESTAMP_RE = re.compile(
+    r"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})?\b"
+    r"|\b\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\b"
+)
+_DEVICE_ID_RE = re.compile(
+    r"\b(?:DEV|SRV|WIN|WS|HOST|PC|LAPTOP|SERVER|DEVICE|NODE|FW|GW|AP)"
+    r"[-_][A-Z0-9]{1,8}(?:[-_][A-Z0-9]{1,8})*\b"
+)
 
 
 @dataclass

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "legal-1",
+    "name": "Partei-Identitaet",
+    "description": "Jede Partei muss mit Name und Geburtsdatum identifiziert werden",
+    "fact_types": ["PERSON", "DATE"],
+    "check": "type:PERSON",
+    "severity": "error"
+  },
+  {
+    "id": "legal-2",
+    "name": "Gerichtsaktenzeichen",
+    "description": "Jeder Fall muss ein Gerichtsaktenzeichen (COURT_REF) haben",
+    "fact_types": ["COURT_REF"],
+    "check": "has_evidence",
+    "severity": "error"
+  },
+  {
+    "id": "legal-3",
+    "name": "Schadenshoehe mit Beleg",
+    "description": "Jeder Schadensbetrag muss durch einen Beleg gestuetzt sein",
+    "fact_types": ["AMOUNT"],
+    "check": "has_evidence",
+    "severity": "error"
+  },
+  {
+    "id": "legal-4",
+    "name": "Mindestkonfidenz",
+    "description": "Fakten unter 0.5 Konfidenz muessen geprueft werden",
+    "fact_types": [],
+    "check": "min_confidence:0.5",
+    "severity": "warning"
+  }
+]

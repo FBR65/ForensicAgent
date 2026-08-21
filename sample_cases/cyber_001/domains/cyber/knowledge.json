@@ -1,0 +1,18 @@
+[{
+  "id": "ransomware_erkennung",
+  "title": "Ransomware-Angriff: Erkennung und Indikatoren",
+  "body": "Ein Ransomware-Angriff zeigt sich typischerweise durch: (1) Massenhafte Dateiverschluesselung in kurzer Zeit, (2) Verbindung zu bekannten C2-Servern, (3) Loeschen von Volume Shadow Copies (vssadmin delete shadows), (4) Verdächtige PowerShell-Aufrufe mit Base64-kodierten Befehlen, (5) Aufklaeren von Netzwerk-Shares. IOCs umfassen IP-Adressen, Datei-Hashes, Registry-Keys und geaenderte Dateierweiterungen. Die erste Massnahme nach Erkennung ist Netzwerkisolation des betroffenen Systems.",
+  "tags": ["ransomware", "incident-response", "ioc", "erkennung"]
+},
+{
+  "id": "log_analyse_grundlagen",
+  "title": "Forensische Log-Analyse Grundlagen",
+  "body": "Bei der forensischen Log-Analyse werden Ereignis-Logs (Windows Event Logs, Syslog, Apache access.log) sequenziell ausgewertet. Zeitstempel muessen auf Konsistenz geprueft werden (NTP-Abgleich). Eine IP-Adresse ist nur verwertbar, wenn sie mit einem Log-Eintrag verknuepft ist — freistehende IP-Adressen ohne Kontext sind kein Beweis. Firewall-Logs sollten mit Server-Logs korreliert werden, um Angriffsvektoren zu rekonstruieren. Der erste Eintrag eines Angriffs ist der Entry-Point, von dort aus wird die Lateral Movement-Kette aufgebaut.",
+  "tags": ["log-analyse", "forensik", "zeitstempel", "korrelation"]
+},
+{
+  "id": "incident_response_phasen",
+  "title": "Incident Response Phasen nach NIST",
+  "body": "Die NIST Incident Response umfasst: Preparation, Detection & Analysis, Containment, Eradication, Recovery, Post-Incident Activity. In der Detection-Phase werden IOCs gesammelt und validiert. Containment isoliert betroffene Systeme ohne Beweise zu zerstoeren. Eradication entfernt die Schadsoftware und schliesst die Schwachstelle. Recovery stellt Systeme aus Backups wieder her und verifiziert Integritaet. Post-Incident erstellt einen forensischen Bericht mit Timeline und Lessons Learned.",
+  "tags": ["nist", "incident-response", "containment", "recovery"]
+}]

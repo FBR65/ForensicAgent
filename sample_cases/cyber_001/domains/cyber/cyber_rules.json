@@ -1,0 +1,42 @@
+[
+  {
+    "id": "cyber-1",
+    "name": "IP-Adresse mit Log-Beleg",
+    "description": "Jede IP-Adresse muss mit einem Log-Eintrag verknuepft sein",
+    "fact_types": ["IP_ADDRESS"],
+    "check": "has_evidence",
+    "severity": "error"
+  },
+  {
+    "id": "cyber-2",
+    "name": "Geraet-Identifikation",
+    "description": "Betroffene Systeme muessen durch DEVICE_ID identifiziert werden",
+    "fact_types": ["DEVICE_ID"],
+    "check": "has_evidence",
+    "severity": "warning"
+  },
+  {
+    "id": "cyber-3",
+    "name": "Zeitstempel-Konsistenz",
+    "description": "Jeder Vorfall muss mindestens einen TIMESTAMP haben",
+    "fact_types": ["TIMESTAMP"],
+    "check": "has_evidence",
+    "severity": "error"
+  },
+  {
+    "id": "cyber-4",
+    "name": "Schadenshoehe mit Beleg",
+    "description": "Jeder financial AMOUNT muss durch ein Dokument gestuetzt sein",
+    "fact_types": ["AMOUNT"],
+    "check": "has_evidence",
+    "severity": "warning"
+  },
+  {
+    "id": "cyber-5",
+    "name": "Mindestkonfidenz",
+    "description": "Fakten unter 0.5 Konfidenz muessen geprueft werden",
+    "fact_types": [],
+    "check": "min_confidence:0.5",
+    "severity": "warning"
+  }
+]
