@@ -63,6 +63,12 @@ class TestSemanticaRetrieval:
         # for matching nodes — a score of 0.0 would indicate vector-only mode.
         max_score = max(r.score for r in results)
         assert max_score > 0.0, "GraphRAG should produce positive relevance scores"
+        # Verify hybrid_alpha is set to 1.0 (graph-only) in the retriever config.
+        # With alpha=1.0, graph_search scores are ~1.0; with alpha=0.0, ~0.01.
+        # This assertion catches a mutant that flips alpha to 0.0.
+        assert retrieval._retriever.hybrid_alpha == 1.0, (
+            "hybrid_alpha must be 1.0 (graph-only) — vector store is not configured"
+        )
 
     def test_multi_hop_context_assembly(self, populated_backend):
         """multi_hop_query() traverses the graph across multiple hops."""
