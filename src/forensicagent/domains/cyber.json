@@ -11,7 +11,11 @@
     {"domain": "cyber", "description": "Geraet-Identifikation", "required_fact_types": ["DEVICE_ID"]},
     {"domain": "cyber", "description": "Zeitstempel-Konsistenz", "required_fact_types": ["TIMESTAMP"]}
   ],
-  "rules": [],
+  "rules": [
+    {"id": "cyber-1", "name": "IP mit Log-Beleg", "description": "Eine IP-Adresse ist nur verwertbar, wenn sie mit einem Log-Eintrag verknuepft ist", "fact_types": ["IP_ADDRESS"], "check": "has_evidence", "severity": "error"},
+    {"id": "cyber-2", "name": "Geraet identifiziert", "description": "Jedes betroffene Geraet muss eine Device-ID haben", "fact_types": ["DEVICE_ID"], "check": "type:DEVICE_ID", "severity": "warning"},
+    {"id": "cyber-3", "name": "Zeitstempel belegt", "description": "Jeder Zeitstempel muss mit einem Log-Eintrag verknuepft sein", "fact_types": ["TIMESTAMP"], "check": "has_evidence", "severity": "warning"}
+  ],
   "entity_patterns": {
     "IP_ADDRESS": ["\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"],
     "DEVICE_ID": ["SRV-\\w+", "FW-\\w+", "WS-\\w+"],

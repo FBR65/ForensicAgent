@@ -11,7 +11,12 @@
     {"domain": "financial", "description": "Betrag mit IBAN-Bezug", "required_fact_types": ["AMOUNT", "IBAN"]},
     {"domain": "financial", "description": "Datums-Konsistenz", "required_fact_types": ["DATE"]}
   ],
-  "rules": [],
+  "rules": [
+    {"id": "fin-1", "name": "Identitaet belegt", "description": "Beschuldigter muss mit Person und Steuernummer identifiziert sein", "fact_types": ["PERSON"], "check": "type:PERSON", "severity": "error"},
+    {"id": "fin-2", "name": "Betrag mit Beleg", "description": "Jeder finanzielle Betrag muss mit Beweis verknuepft sein", "fact_types": ["AMOUNT"], "check": "has_evidence", "severity": "error"},
+    {"id": "fin-3", "name": "IBAN-Konsistenz", "description": "Zahlungen muessen eine IBAN aufweisen", "fact_types": ["IBAN"], "check": "type:IBAN", "severity": "warning"},
+    {"id": "fin-4", "name": "Mindestkonfidenz Betraege", "description": "Betraege unter 0.5 Konfidenz muessen geprueft werden", "fact_types": ["AMOUNT"], "check": "min_confidence:0.5", "severity": "warning"}
+  ],
   "entity_patterns": {
     "IBAN": ["[A-Z]{2}\\d{2}[A-Z0-9]{11,30}"],
     "TAX_CODE": ["[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]"],

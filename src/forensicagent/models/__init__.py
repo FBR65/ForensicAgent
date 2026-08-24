@@ -4,6 +4,7 @@ from forensicagent.models.evidence import Evidence
 from forensicagent.models.relationship import Relationship
 from forensicagent.models.requirement import Requirement, RequirementStatus
 from forensicagent.models.finding import Finding, FindingStatus
+from forensicagent.models.amount import Amount, AmountSourceType
 
 __all__ = [
     "Source",
@@ -17,4 +18,6 @@ __all__ = [
     "RequirementStatus",
     "Finding",
     "FindingStatus",
+    "Amount",
+    "AmountSourceType",
 ]

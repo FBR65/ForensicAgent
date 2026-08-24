@@ -72,12 +72,14 @@ class EvidenceLinkingAgent(BaseAgent):
         return all_evidence
 
     def classify_fact(
-        self, fact: Fact, source: Source
+        self, fact: Fact, source: Source | None
     ) -> FactStatus:
         """Apply deterministic rules to determine the FactStatus."""
         if fact.confidence < 0.5:
             return FactStatus.CANDIDATE
         if not fact.evidence_ids:
+            return FactStatus.INCOMPLETE
+        if source is None:
             return FactStatus.INCOMPLETE
         if source.status.value == "blocking":
             return FactStatus.REJECTED

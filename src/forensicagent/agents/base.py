@@ -5,6 +5,8 @@ import time
 import uuid
 from typing import Any, Protocol, TypeVar
 
+from forensicagent.config import llm_config, llm_enabled
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")

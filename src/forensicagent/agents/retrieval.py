@@ -90,13 +90,17 @@ class KnowledgeRetrievalAgent(BaseAgent):
         Multi-hop GraphRAG.  If it returns results, they are returned as-is
         (content + score + source).  If GraphRAG yields nothing, fall back
         to BM25 ranking over the local KB documents.
+
+        Results are then passed through an explainable reranker that
+        combines semantic relevance with source authority, recency and
+        diversity (PDF §9).
         """
         # --- S-RETRIEVE: GraphRAG primary path ---
         if self._semantica_retrieval is not None and self._semantica_retrieval.is_available():
             try:
                 graph_results = self._semantica_retrieval.retrieve(query, max_results=top_k)
                 if graph_results:
-                    return [
+                    results = [
                         {
                             "id": r.metadata.get("node_id", r.source or ""),
                             "title": r.content[:80],
@@ -107,6 +111,7 @@ class KnowledgeRetrievalAgent(BaseAgent):
                         }
                         for r in graph_results
                     ]
+                    return self._rerank(query, results, top_k)
             except Exception as exc:
                 logger.warning("GraphRAG retrieval failed, falling back to BM25: %s", exc)
 
@@ -115,10 +120,82 @@ class KnowledgeRetrievalAgent(BaseAgent):
             return []
         results = self._bm25.search(query, top_k)
         docs_by_id = {d["id"]: d for d in self._documents}
-        return [
+        docs = [
             {"score": score, **docs_by_id.get(doc_id, {"id": doc_id, "body": ""})}
             for doc_id, score in results
         ]
+        return self._rerank(query, docs, top_k)
+
+    def _rerank(
+        self, query: str, results: list[dict[str, Any]], top_k: int
+    ) -> list[dict[str, Any]]:
+        """Explainable reranking (PDF §9).
+
+        Combines the raw retrieval score with:
+        - semantic relevance (query-term overlap in title/body),
+        - source authority (tags such as ``statute``/``official``),
+        - recency (a ``date`` field, if present),
+        - diversity (penalise near-duplicate bodies).
+
+        Each result carries a ``rerank`` dict explaining the score so the
+        ranking is auditable rather than a black box.
+        """
+        if not results:
+            return results
+
+        q_terms = {
+            t.strip(".,?;:!'\"").lower()
+            for t in query.split()
+            if len(t.strip(".,?;:!'\"")) >= 3
+        }
+
+        scored: list[tuple[float, dict[str, Any]]] = []
+        for r in results:
+            base = float(r.get("score", 0.0))
+            text = f"{r.get('title', '')} {r.get('body', '')}".lower()
+            overlap = sum(1 for t in q_terms if t in text)
+            semantic = min(1.0, overlap / max(1, len(q_terms)))
+
+            tags = [t.lower() for t in r.get("tags", [])]
+            authority = 0.0
+            if any(t in tags for t in ("statute", "official", "gesetz", "amtlich")):
+                authority = 0.2
+            elif any(t in tags for t in ("template", "checklist", "practice")):
+                authority = 0.1
+
+            recency = 0.0
+            date = r.get("date")
+            if date:
+                try:
+                    from datetime import datetime
+                    year = int(str(date)[:4])
+                    recency = 0.1 if year >= 2020 else 0.0
+                except (ValueError, TypeError):
+                    recency = 0.0
+
+            final = base + semantic + authority + recency
+            scored.append((final, r))
+
+        # Diversity: penalise results whose body is near-duplicate of a
+        # higher-ranked result already kept.
+        scored.sort(key=lambda x: x[0], reverse=True)
+        kept: list[dict[str, Any]] = []
+        seen_bodies: list[str] = []
+        for score, r in scored:
+            body = (r.get("body", "") or "").lower()[:200]
+            if body and any(body in seen or seen in body for seen in seen_bodies):
+                score -= 0.15
+            seen_bodies.append(body)
+            r["rerank"] = {
+                "base_score": round(float(r.get("score", 0.0)), 3),
+                "semantic": round(semantic, 3),
+                "authority": round(authority, 3),
+                "recency": round(recency, 3),
+                "final_score": round(score, 3),
+            }
+            kept.append(r)
+
+        return kept[:top_k]
 
     def retrieve_by_tags(self, tags: list[str], top_k: int = 10) -> list[dict[str, Any]]:
         matched = [d for d in self._documents if any(t in d.get("tags", []) for t in tags)]

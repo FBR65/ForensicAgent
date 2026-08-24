@@ -50,11 +50,30 @@ class ReportingAgent(BaseAgent):
             "findings": [self._finding_to_dict(f) for f in findings],
             "fact_table": self._graph.fact_table(),
             "evidence_audit": self._graph.evidence_audit()[:50],
+            "amount_audit": self._amount_audit(),
             "quality_score": self._compute_quality_score(matrix),
             "warnings": self._collect_warnings(matrix),
         }
         logger.info("Report built: %d sections, %d findings", len(sections), len(findings))
         return report
+
+    def _amount_audit(self) -> list[dict[str, Any]]:
+        """Expose the amount provenance / addend audit for AMOUNT facts."""
+        audit: list[dict[str, Any]] = []
+        for fact in self._graph.all_facts():
+            if fact.type != "AMOUNT":
+                continue
+            amount = (fact.metadata or {}).get("amount")
+            audit.append({
+                "fact_id": fact.id,
+                "value": str(fact.value),
+                "status": fact.status.value,
+                "source_type": amount.source_type.value if amount else "unproven",
+                "is_total": bool(amount and amount.is_total),
+                "addend_ids": amount.addend_ids if amount else [],
+                "sources": fact.source_ids,
+            })
+        return audit
 
     def _finding_to_dict(self, f: Finding) -> dict[str, Any]:
         fact_ids = []
@@ -107,6 +126,14 @@ class ReportingAgent(BaseAgent):
         lines.append("\n## Evidence Audit (excerpt)\n")
         for ev in report["evidence_audit"][:10]:
             lines.append(f"- [{ev['evidence_id']}] {ev['snippet'][:120]}")
+        if report.get("amount_audit"):
+            lines.append("\n## Amount Audit (provenance / addends)\n")
+            for a in report["amount_audit"]:
+                flag = "✅" if a["status"] == "confirmed" else "⚠️"
+                lines.append(
+                    f"- {flag} {a['value']} [{a['source_type']}] "
+                    f"total={a['is_total']} addends={a['addend_ids']}"
+                )
         return "\n".join(lines)
 
     def run(self, *args, **kwargs):

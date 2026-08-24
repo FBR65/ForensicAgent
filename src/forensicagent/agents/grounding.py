@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from forensicagent.agents.base import BaseAgent
-from forensicagent.models import Fact, FactStatus
+from forensicagent.models import Fact, FactStatus, Finding, FindingStatus
 from forensicagent.pipeline.graph import CaseGraph
 from forensicagent.utils.spacy_utils import extract_all_entities
 
@@ -23,7 +23,8 @@ _DATE_RE = re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b"
 _IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b")
 _COURT_REF_RE = re.compile(r"\b\d{1,2}\s+[A-Z]{1,2}\s+\d{1,4}/\d{2,4}\b"
-                           r"|\bI\s+[A-Z]{1,2}\s+\d{1,4}/\d{2,4}\b")
+                           r"|\bI\s+[A-Z]{1,2}\s+\d{1,4}/\d{2,4}\b"
+                           r"|\bAz\.\s*\d{1,2}\s+[A-Z]{1,2}\s+\d{1,4}/\d{2,4}\b")
 _TIMESTAMP_RE = re.compile(
     r"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})?\b"
     r"|\b\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\b"
@@ -77,6 +78,7 @@ class GroundingAgent(BaseAgent):
             ("DATE", _DATE_RE),
             ("IP_ADDRESS", _IP_RE),
             ("IBAN", _IBAN_RE),
+            ("COURT_REF", _COURT_REF_RE),
         ]
         for label, pattern in patterns:
             for m in pattern.finditer(output):
@@ -113,6 +115,43 @@ class GroundingAgent(BaseAgent):
             rejected_facts=rejected_facts,
             summary=summary,
         )
+
+    def reopen_ungrounded(self, result: GroundingResult) -> list[str]:
+        """Feed ungrounded claims back into the graph (PDF §12).
+
+        For every ungrounded claim, reopen the matching fact (if any) as
+        ``REQUIRES_REVIEW`` and record a Finding so the issue is visible in
+        the audit rather than being a generic error.  Returns the ids of the
+        reopened facts.
+        """
+        if result.passed:
+            return []
+        reopened: list[str] = []
+        for claim in result.ungrounded_claims:
+            fact_id = claim.get("fact_id")
+            if fact_id and fact_id != "?":
+                fact = self._graph.get_fact(fact_id)
+                if fact is not None and fact.is_usable():
+                    fact.status = FactStatus.REVIEW
+                    reopened.append(fact_id)
+            self._graph.add_finding(Finding(
+                id=f"GROUND-{self.new_id()}",
+                case_id=self.case_id,
+                statement=(
+                    f"Ungrounded claim in output: {claim.get('type')} "
+                    f"'{claim.get('claim')}' has no confirmed evidence path."
+                ),
+                confidence=0.9,
+                status=FindingStatus.UNSUPPORTED,
+                evidence_path=[],
+                fact_ids=[fact_id] if fact_id and fact_id != "?" else [],
+                metadata={
+                    "grounding": True,
+                    "claim_type": claim.get("type"),
+                    "claim": claim.get("claim"),
+                },
+            ))
+        return reopened
 
     def run(self, *args, **kwargs):
         return {"status": "ok", "data": {}}

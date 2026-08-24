@@ -2,7 +2,8 @@
 
 A general-purpose AI forensic agent pipeline applicable to any forensic activity:
 legal case files, cyber-incident investigations, financial fraud analysis, insurance
-claims, tax fraud investigations, medical-examiner reports, and other investigation types.
+claims, tax fraud investigations, medical-examiner reports, and other investigation
+types.
 
 The system is built with **Agno** (agent framework), **SpaCy** (`de_dep_news_trf`),
 **BM25** (`rank-bm25`), **Semantica** (`semantica[agno]` — ContextGraph, Provenance,
@@ -43,11 +44,11 @@ Case File (documents / logs / artefacts)
    +- 5. Fact Extraction  SpaCy NER + custom entity rules
    +- 6. Evidence Linking Atomic evidence -> fact edges
    +- 7. Graph Build      Case knowledge graph (NetworkX + ContextGraph)
-   +- 8. Validation       Datalog rules + deterministic checks
-   +- 9. Knowledge RAG    Multi-hop GraphRAG (Semantica) + BM25 fallback
+   +- 8. Validation       Datalog rules + deterministic checks + amount validation
+   +- 9. Knowledge RAG    Multi-hop GraphRAG (Semantica) + BM25 fallback + reranking
    +-10. Context Build    Construct controlled LLM context (AgnoKGToolkit)
    +-11. Assessment       LLM reasoning within evidence perimeter (AgnoDecisionKit)
-   +-12. Grounding        Verify LLM output against evidence
+   +-12. Grounding        Verify LLM output against evidence; feed failures back
    +-13. Reporting        Section-by-section draft + audit + PROV-O export
    +-14. Review           Human-in-the-loop corrections
 ```
@@ -68,13 +69,14 @@ Each processing step is an Agno-based agent. The LLM is optional: without an
 | 5 | **FactExtractionAgent** | NER + entity / amount / date extraction via SpaCy and custom rules |
 | 6 | **EvidenceLinkingAgent** | Create `Evidence` objects (atomic fragments) linked to each `Fact` |
 | 7 | **ValidationAgent** | Datalog rule verification (via Semantica) or deterministic fallback |
-| 8 | **KnowledgeRetrievalAgent** | Multi-hop GraphRAG (Semantica) + BM25 fallback for domain KB retrieval |
-| 9 | **KnowledgeBaseAgent** | LLM-assisted authoring of KB documents via Q&A |
-|10 | **ContextBuilderAgent** | Assemble controlled context + AgnoKGToolkit graph queries |
-|11 | **AssessmentAgent** | LLM reasoning + AgnoDecisionKit decision tracking and causal chains |
-|12 | **GroundingAgent** | Post-generation verification of every claim against evidence |
-|13 | **ReportingAgent** | Section-by-section report + drafting matrix + PROV-O export |
-|14 | **ReviewAgent** | Human review workflow; corrections feed back into the graph |
+| 8 | **AmountValidator** | Deterministic monetary checks: provenance, addends, ban on improper sums |
+| 9 | **KnowledgeRetrievalAgent** | Multi-hop GraphRAG (Semantica) + BM25 fallback + explainable reranking |
+|10 | **KnowledgeBaseAgent** | LLM-assisted authoring of KB documents via Q&A |
+|11 | **ContextBuilderAgent** | Assemble controlled context + AgnoKGToolkit graph queries |
+|12 | **AssessmentAgent** | LLM reasoning + AgnoDecisionKit decision tracking and causal chains |
+|13 | **GroundingAgent** | Post-generation verification of every claim against evidence |
+|14 | **ReportingAgent** | Section-by-section report + drafting matrix + PROV-O export |
+|15 | **ReviewAgent** | Human review workflow; corrections feed back into the graph |
 
 ---
 
@@ -103,6 +105,12 @@ Evidence      (atomic fragment)
   - id, source_id, fact_id
   - snippet, page, start_char, end_char, confidence
 
+Amount        (monetary fact with provenance)
+  - value, currency
+  - source_type (DIRECT / DERIVED / UNPROVEN / NON_ADDITIVE / OVERLAPPING)
+  - addend_ids (documented addends for derived totals)
+  - fact_id, source_ids, evidence_ids
+
 Relationship
   - subject_fact_id, predicate, object_fact_id, evidence_id
 
@@ -115,11 +123,11 @@ Finding
   - id, case_id, statement, confidence
   - status (supported / partial / unsupported)
   - evidence_path  (list of Evidence ids)
-  - metadata       (conflict_type, values, detector_found)
+  - metadata       (conflict_type, values, detector_found, grounding)
 
 CaseGraph     (volatile, per-session)
   - NetworkX DiGraph (working memory) + Semantica ContextGraph (mirror)
-  - nodes: Case | Source | Fact | Evidence | Requirement | Finding | Relationship
+  - nodes: Case | Source | Fact | Evidence | Amount | Requirement | Finding | Relationship
   - edges: HAS_SOURCE, HAS_FACT, SUPPORTS, CONTAINS, HAS_EVIDENCE, REQUIRES
 ```
 
@@ -194,6 +202,9 @@ pipeline = ForensicPipeline(case_id="C", domain="general", use_semantica=False)
    extraction activity, and agent.
 6. **Conflict detection**: contradictory facts across sources are automatically flagged
    as Findings.
+7. **Amount integrity**: monetary facts carry provenance and addend tracking; totals are
+   accepted only when their addends are documented, and non-additive or overlapping
+   amounts are never summed automatically.
 
 ---
 
@@ -211,6 +222,19 @@ pipeline = ForensicPipeline(case_id="C", domain="general", use_semantica=False)
    `KnowledgeRetrievalAgent` selects the most relevant domain rules and precedents for
    the current case. When Semantica is available, Multi-hop GraphRAG is used as the
    primary retrieval path with BM25 as fallback.
+
+### Explainable Reranking
+
+Retrieved results are passed through an explainable reranker that combines the raw
+retrieval score with:
+
+- **semantic relevance** — query-term overlap in the title and body,
+- **source authority** — tags such as `statute` / `official` / `gesetz` / `amtlich`,
+- **recency** — a `date` field, when present,
+- **diversity** — a penalty for near-duplicate bodies.
+
+Each result carries a `rerank` dict explaining the final score so the ranking is
+auditable rather than a black box.
 
 ---
 
@@ -259,6 +283,24 @@ Supported `check` operators: `type:<T>`, `min_confidence:<N>`, `regex:<pattern>`
 `has_evidence`. A fact failing an `error` rule is `REJECTED`; failing a `warning` rule
 marks it `REQUIRES_REVIEW`.
 
+### Amount Validation
+
+Amounts are among the most delicate areas of a forensic pipeline. The `AmountValidator`
+enforces the "ban on improper sums" deterministically, before any LLM invocation:
+
+- **direct** — has an individual documentary source;
+- **derived** — computed from documented addends; a derived amount without addends is
+  invalid;
+- **unproven** — the link to the source is missing; such amounts are downgraded to
+  `REQUIRES_REVIEW`;
+- **non-additive** — must never be summed automatically;
+- **overlapping** — may duplicate another value and is flagged.
+
+A total is accepted only when its addends are known and documented. The validator parses
+both German (`1.234,56`) and English (`1,234.56`) monetary formats, with or without a
+currency prefix or suffix. The resulting `Amount` is attached to the fact's metadata and
+surfaced in the report's amount audit.
+
 ---
 
 ## 11. Controlled LLM Prompt
@@ -285,13 +327,16 @@ and confidence, enabling causal chain tracing for audit purposes.
 
 After the LLM generates text, the `GroundingAgent` verifies the output:
 
-1. Extract every numerical, identifier, court, or date claim.
+1. Extract every numerical, identifier, court, or date claim (amounts, tax codes, dates,
+   IP addresses, IBANs, court references).
 2. Verify each claim maps to a `CONFIRMED` fact in the graph.
-3. Any claim with no evidence path rejects the output and feeds it back into the graph
-   as a `REQUIRES_REVIEW` item.
+3. Any claim with no evidence path rejects the output.
 
-The system does not trust the model; it uses the model and then checks it. A rejected
-output produces an operational indication rather than a generic error.
+The system does not trust the model; it uses the model and then checks it. When grounding
+fails, the failure is **fed back into the graph**: each ungrounded claim is recorded as a
+`Finding` and any matching usable fact is reopened as `REQUIRES_REVIEW`. This turns a
+generic error into an operational indication — the data point cannot be used as-is and
+requires professional review or a clearer documentary source.
 
 ---
 
@@ -306,10 +351,12 @@ each required section to its required facts, the evidence path, and its status.
 | Liabilities | AMOUNT x 3 | PARTIAL | one amount needs review |
 | Conflicts | AMOUNT | UNSUPPORTED | two contradictory amounts detected |
 
-The final output is an **assisted draft + audit report**, not an automated decision.
-Sections that are incomplete carry explicit warnings; the professional performs the
-final review. When Semantica is available, a PROV-O Turtle export is generated for
-regulatory audit purposes:
+The report also includes an **amount audit** that exposes the provenance and addend
+tracking of every monetary fact, and an **evidence audit** listing the atomic fragments
+behind each fact. The final output is an **assisted draft + audit report**, not an
+automated decision. Sections that are incomplete carry explicit warnings; the
+professional performs the final review. When Semantica is available, a PROV-O Turtle
+export is generated for regulatory audit purposes:
 
 ```python
 prov_turtle = pipeline.export_provenance(format="turtle")
@@ -328,9 +375,58 @@ prov_turtle = pipeline.export_provenance(format="turtle")
 | `financial` | `domains/financial.json` | Financial fraud (bank statements, invoices, audit reports) |
 | `tax` | `domains/tax.json` | Tax fraud / Steuerstrafverfahren (USt, AO, Scheinrechnungen) |
 
+Each domain ships a set of deterministic validation rules. For example, the `legal`
+domain enforces that a party is identified, a court reference is present, and a claimed
+damage amount is backed by evidence; the `cyber` domain requires that an IP address is
+linked to a log entry.
+
 ---
 
-## 15. Quick Start
+## 15. Configuration
+
+The LLM endpoint is freely configurable through any OpenAI-compatible provider
+(OpenAI, Azure, Ollama, LM Studio, vLLM, ...). Three sources are resolved in
+increasing priority:
+
+```
+config.yaml  <  environment variables  <  CLI flags
+```
+
+### config.yaml
+
+The shipped default lives at `src/forensicagent/config.yaml`:
+
+```yaml
+llm:
+  api_key: ""
+  base_url: ""
+  model_id: "gpt-4o-mini"
+```
+
+Set `api_key` to enable the LLM. `base_url` points at the provider endpoint
+(e.g. `http://localhost:11434/v1` for Ollama); leave it empty to use the
+provider's default. `model_id` selects the model. A custom config file can be
+loaded by setting `FORENSIC_CONFIG` to its path.
+
+### Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | API key (overrides `config.yaml`) |
+| `OPENAI_BASE_URL` | Provider base URL (overrides `config.yaml`) |
+| `OPENAI_MODEL_ID` | Model identifier (overrides `config.yaml`) |
+
+### CLI flags
+
+The `run` command accepts `--api-key`, `--base-url`, and `--model-id`, which
+override both the config file and the environment for that invocation.
+
+When no API key is configured, the pipeline runs in deterministic (graph-query)
+mode without invoking a language model.
+
+---
+
+## 17. Quick Start
 
 ```python
 from forensicagent.pipeline.orchestrator import ForensicPipeline
@@ -363,7 +459,7 @@ with ForensicPipeline(case_id="CASE-2026-001", domain="general",
 
 ---
 
-## 16. Installation
+## 18. Installation
 
 ```bash
 uv sync
@@ -387,7 +483,7 @@ Ingestion notes:
 
 ---
 
-## 17. Usage
+## 19. Usage
 
 Run the end-to-end demo (sample insurance-fraud case):
 
@@ -401,10 +497,48 @@ Run all 4 synthetic test cases (legal, cyber, financial, tax):
 .venv/bin/python test_real_data.py
 ```
 
-Run the CLI (ingest files/directories and answer a query):
+### Command-Line Interface
+
+The package ships a subcommand-based CLI. Run `forensicagent --help` for the full
+list of commands.
+
+**Run a case file and answer queries:**
 
 ```bash
-.venv/bin/forensicagent ./sample_cases/insurance_fraud_001/evidence 'What is the total liability?'
+.venv/bin/forensicagent run ./sample_cases/insurance_fraud_001/evidence 'What is the total liability?'
+```
+
+Options:
+
+- `--domain <name>` — domain config to use (default: `general`).
+- `--kb-dir <dir>` — knowledge-base directory (repeatable).
+- `--no-semantica` — force legacy mode (NetworkX + LMDB, no Semantica).
+
+**Scaffold a new domain config (README §21):**
+
+```bash
+.venv/bin/forensicagent new-domain insurance --label "Insurance"
+```
+
+Writes `src/forensicagent/domains/insurance.json` with a starter set of
+requirements, rules, and entity patterns. Use `--output <path>` to write elsewhere
+and `--force` to overwrite an existing file.
+
+**Author a knowledge-base document from a description (README §22):**
+
+```bash
+.venv/bin/forensicagent kb-add ./domains/cyber \
+  "An IP address is only usable if it is linked to a log entry." --domain cyber
+```
+
+Writes a structured KB document (JSON) into the given directory and re-indexes it.
+Without an `OPENAI_API_KEY`, the description is stored deterministically as a
+Markdown document.
+
+**List documents in a knowledge base:**
+
+```bash
+.venv/bin/forensicagent kb-list ./domains/cyber
 ```
 
 Run the LLM (optional): set `OPENAI_API_KEY`; otherwise the pipeline runs in
@@ -413,7 +547,7 @@ deterministic (graph-query) mode.
 Run the tests:
 
 ```bash
-.venv/bin/python -m pytest tests/ -v --timeout=300
+.venv/bin/python -m pytest tests/ -v
 ```
 
 Run mutation tests (Phases 7-9):
@@ -424,10 +558,13 @@ Run mutation tests (Phases 7-9):
 
 ---
 
-## 18. Project Structure
+## 20. Project Structure
 
 ```
 src/forensicagent/
++- __main__.py     CLI entry point (run / new-domain / kb-add / kb-list)
++- config.py       Central configuration resolution (YAML + env + CLI)
++- config.yaml     Default LLM endpoint configuration
 +- agents/        Agno-based processing agents
 |   +- ingestion.py         Parse PDF/DOCX/TXT/image/log (via firecrawl-anydoc)
 |   +- quality_control.py   OCR / parse quality gates
@@ -436,20 +573,21 @@ src/forensicagent/
 |   +- fact_extraction.py   SpaCy NER + rules
 |   +- evidence_linking.py  Atomic evidence linking
 |   +- validation.py        Deterministic rule checks (pre-LLM)
-|   +- retrieval.py         Multi-hop GraphRAG (Semantica) + BM25 fallback
+|   +- retrieval.py         Multi-hop GraphRAG (Semantica) + BM25 fallback + reranking
 |   +- knowledge_base.py    LLM-assisted authoring of KB documents
 |   +- context_builder.py   Build evidence-constrained LLM context + AgnoKGToolkit
 |   +- assessment.py        Agno LLM (constrained) + AgnoDecisionKit
-|   +- grounding.py         Verify LLM output against evidence
-|   +- reporting.py         Drafting-matrix report
+|   +- grounding.py         Verify LLM output against evidence; feed failures back
+|   +- reporting.py         Drafting-matrix report + amount/evidence audit
 |   +- review.py            Human-in-the-loop review
 +- domains/       Pluggable domain configs (rules + KB paths)
 |   +- general.json  legal.json  cyber.json  financial.json  tax.json
-+- models/        Evidence, Fact, Finding, Source, Requirement, Relationship
++- models/        Evidence, Fact, Finding, Source, Requirement, Relationship, Amount
 +- pipeline/      Orchestration + Semantica integration
 |   +- orchestrator.py         ForensicPipeline master class
 |   +- graph.py               Evidentiary knowledge graph (NetworkX + ContextGraph)
 |   +- lmdb_store.py           LMDB-backed volatile persistence (legacy fallback)
+|   +- amount_validator.py     Deterministic amount checks (provenance, addends)
 |   +- semantica_backend.py    SemanticaBackend factory (S-GRAPH, S-MEMORY)
 |   +- provenance.py           ProvenanceTracker (S-PROV)
 |   +- dedup.py                EntityDeduplicator (S-DEDUP)
@@ -464,7 +602,7 @@ src/forensicagent/
 
 ---
 
-## 19. Adding a New Forensic Domain
+## 21. Adding a New Forensic Domain
 
 Create `domains/<name>.json` with `requirements` and `rules`:
 
@@ -491,7 +629,7 @@ ForensicPipeline(case_id, domain="tax", kb_dirs=["sample_cases/tax_001/domains/t
 
 ---
 
-## 20. Authoring KB Documents (LLM-assisted)
+## 22. Authoring KB Documents (LLM-assisted)
 
 The `KnowledgeBaseAgent` helps a forensic professional author KB documents through
 question-and-answer with the LLM:
@@ -513,7 +651,7 @@ with ForensicPipeline(case_id="C", kb_dirs=["domains/cyber"]) as p:
 
 ---
 
-## 21. Extending Extraction
+## 23. Extending Extraction
 
 Entity patterns live in `utils/spacy_utils.py` (`extract_domain_entities`). Add a regex
 or pattern per entity type. The `de_dep_news_trf` model handles German and English;
@@ -524,23 +662,24 @@ EMAIL, URL, IP_ADDRESS, PHONE, DEVICE_ID, TIMESTAMP, COURT_REF, ACCOUNT.
 
 ---
 
-## 22. Tests
+## 24. Tests
 
 The test suite covers BM25 indexing, the evidentiary graph and LMDB persistence, fact
 extraction and evidence linking, classification, quality control, keyword extraction,
 the end-to-end pipeline, grounding, knowledge-base assistant, Semantica graph adapter,
 provenance tracking, entity deduplication, conflict detection, Datalog validation,
 PROV-O export, Semantica retrieval (GraphRAG), Semantica assessment (decision tracking),
-Semantica KG query, and agent integration.
+Semantica KG query, agent integration, and the amount-validation / reranking /
+grounding-feedback improvements.
 
 ```
-75 tests, 0 skipped
+82 tests, 0 skipped
 9/9 mutation tests killed (Phases 7-9)
 4 real-data cases: legal, cyber, financial, tax
 ```
 
 ```bash
-.venv/bin/python -m pytest tests/ -v --timeout=300
+.venv/bin/python -m pytest tests/ -v
 ```
 
 ---

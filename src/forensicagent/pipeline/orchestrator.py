@@ -38,6 +38,7 @@ from forensicagent.pipeline.dedup import EntityDeduplicator
 from forensicagent.pipeline.conflicts import ConflictScanner
 from forensicagent.pipeline.datalog_rules import DatalogValidator
 from forensicagent.pipeline.prov_export import export_provenance
+from forensicagent.pipeline.amount_validator import AmountValidator
 from forensicagent.utils.bm25 import BM25Index
 
 logger = logging.getLogger(__name__)
@@ -62,9 +63,11 @@ class ForensicPipeline:
         kb_dirs: list[str] | None = None,
         session_dir: str | None = None,
         use_semantica: bool = True,
+        llm_overrides: dict[str, Any] | None = None,
     ) -> None:
         self.case_id = case_id
         self.domain = load_domain(domain)
+        self._llm_overrides = llm_overrides
         self._session_dir = session_dir or tempfile.mkdtemp(prefix=f"forensic-session-{case_id[:8]}-")
 
         # --- Semantica backend (optional) ---
@@ -96,6 +99,7 @@ class ForensicPipeline:
         self._datalog = DatalogValidator(
             self._semantica.datalog_reasoner if self._semantica else None
         )
+        self._amount_validator = AmountValidator()
 
         # --- S-RETRIEVE / S-ASSESS / S-QUERY wrappers ---
         self._semantica_retrieval: SemanticaRetrieval | None = None
@@ -118,9 +122,9 @@ class ForensicPipeline:
             case_id, kb_dirs=kb_dirs,
             semantica_retrieval=self._semantica_retrieval,
         ) if kb_dirs else None
-        self._kb_assistant = KnowledgeBaseAgent(case_id, kb_dirs=kb_dirs) if kb_dirs else None
+        self._kb_assistant = KnowledgeBaseAgent(case_id, kb_dirs=kb_dirs, llm_overrides=llm_overrides) if kb_dirs else None
         self._context_builder = ContextBuilderAgent(case_id, kg_query=self._kg_query)
-        self._assessor = AssessmentAgent(case_id, self._graph, decision_kit=self._decision_kit)
+        self._assessor = AssessmentAgent(case_id, self._graph, decision_kit=self._decision_kit, llm_overrides=llm_overrides)
         self._grounder = GroundingAgent(case_id, self._graph)
         self._reporter = ReportingAgent(case_id, self._graph)
         self._reviewer = ReviewAgent(case_id, self._graph)
@@ -162,9 +166,12 @@ class ForensicPipeline:
         facts = self._fact_extractor.extract_batch(sources, self.case_id)
         evidence_items = self._evidence_linker.link_batch(facts, self._sources_by_id)
 
-        # Apply deterministic classification of fact status.
+        # Apply deterministic classification of fact status.  Evidence must
+        # be linked first so that ``fact.evidence_ids`` is populated before
+        # ``classify_fact`` evaluates the evidence path.
         for fact in facts:
-            status = self._evidence_linker.classify_fact(fact, self._sources_by_id.get(fact.source_ids[0], Fact(id="", case_id="", type="", value="")))
+            src = self._sources_by_id.get(fact.source_ids[0]) if fact.source_ids else None
+            status = self._evidence_linker.classify_fact(fact, src)
             fact.status = status
 
         # Run validation rules (S-REASON: use Datalog if available, else legacy).
@@ -184,6 +191,15 @@ class ForensicPipeline:
                     logger.warning("Datalog violation: %s on fact %s", v["rule_id"], v["fact_id"])
         else:
             self._validator.validate_batch(facts)
+
+        # PDF §6: deterministic amount validation (provenance, addends,
+        # ban on improper sums).  Runs before any LLM invocation.
+        amount_results = self._amount_validator.validate_facts(facts)
+        for res in amount_results:
+            if not res.valid:
+                logger.warning(
+                    "Amount %s invalid: %s", res.amount.fact_id, "; ".join(res.issues)
+                )
 
         # S-DEDUP: deduplicate facts across sources.
         facts = self._dedup.deduplicate_facts(facts)
@@ -246,11 +262,17 @@ class ForensicPipeline:
         )
         assessment = self._assessor.assess(question, context)
         grounding = self._grounder.verify(assessment["answer"])
+        reopened: list[str] = []
 
         if not grounding.passed:
             logger.warning("Grounding failed: %s", grounding.summary)
             for claim in grounding.ungrounded_claims:
                 logger.warning("  Ungrounded %s: %s", claim["type"], claim["claim"])
+            # PDF §12: feed the failure back into the graph so the issue
+            # becomes an operational indication, not a generic error.
+            reopened = self._grounder.reopen_ungrounded(grounding)
+            if reopened:
+                logger.warning("  Reopened facts for review: %s", reopened)
 
         return {
             "question": question,
@@ -261,9 +283,9 @@ class ForensicPipeline:
                 "summary": grounding.summary,
                 "grounded_claims": grounding.grounded_claims,
                 "ungrounded_claims": grounding.ungrounded_claims,
+                "reopened_facts": reopened,
             },
         }
-
     def build_report(self, title: str = "Forensic Case Report") -> dict[str, Any]:
         logger.info("[%s] Phase 13: Reporting", self.case_id)
         return self._reporter.build_report(title=title)

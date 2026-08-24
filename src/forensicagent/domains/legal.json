@@ -11,7 +11,13 @@
     {"domain": "legal", "description": "Gerichtsaktenzeichen", "required_fact_types": ["COURT_REF"]},
     {"domain": "legal", "description": "Schadenshoehe belegt", "required_fact_types": ["AMOUNT"]}
   ],
-  "rules": [],
+  "rules": [
+    {"id": "legal-1", "name": "Partei identifiziert", "description": "Jede Partei muss mit Name identifiziert werden", "fact_types": ["PERSON"], "check": "type:PERSON", "severity": "error"},
+    {"id": "legal-2", "name": "Gerichtsaktenzeichen vorhanden", "description": "Ein Gerichtsverfahren muss ein Aktenzeichen haben", "fact_types": ["COURT_REF"], "check": "type:COURT_REF", "severity": "error"},
+    {"id": "legal-3", "name": "Schadenshoehe belegt", "description": "Ein Schadensbetrag muss mit Beweis verknuepft sein", "fact_types": ["AMOUNT"], "check": "has_evidence", "severity": "error"},
+    {"id": "legal-4", "name": "Betrag mit ausreichender Konfidenz", "description": "Betraege unterhalb der Konfidenzschwelle sind nicht verwertbar", "fact_types": ["AMOUNT"], "check": "min_confidence:0.5", "severity": "warning"},
+    {"id": "legal-5", "name": "Datum plausibel", "description": "Daten muessen mit ausreichender Konfidenz extrahiert sein", "fact_types": ["DATE"], "check": "min_confidence:0.5", "severity": "warning"}
+  ],
   "entity_patterns": {
     "COURT_REF": ["Az.\\s+\\d+\\s+[A-Z]\\s+\\d+/\\d+"],
     "PERSON": [],

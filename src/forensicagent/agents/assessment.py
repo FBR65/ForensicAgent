@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from typing import Any, Optional
 
-from forensicagent.agents.base import BaseAgent
+from forensicagent.agents.base import BaseAgent, llm_config, llm_enabled
 from forensicagent.pipeline.graph import CaseGraph
 
 logger = logging.getLogger(__name__)
@@ -43,15 +42,21 @@ class AssessmentAgent(BaseAgent):
         case_id: str,
         graph: CaseGraph,
         decision_kit: Optional[Any] = None,
+        llm_overrides: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__(case_id)
         self._graph = graph
         self._decision_kit = decision_kit
         self._llm: Agent | None = None
-        if _AGNO_AVAILABLE and os.getenv("OPENAI_API_KEY"):
+        cfg = llm_config(llm_overrides)
+        if _AGNO_AVAILABLE and cfg:
             self._llm = Agent(
                 name="forensic-assessment-agent",
-                model=OpenAIChat(id="gpt-4o-mini"),
+                model=OpenAIChat(
+                    id=cfg["model_id"],
+                    api_key=cfg["api_key"],
+                    base_url=cfg.get("base_url"),
+                ),
                 instructions=[
                     "You are a forensic reasoning assistant.",
                     "Use ONLY facts whose status is CONFIRMED or APPROVED.",

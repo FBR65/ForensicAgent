@@ -1,0 +1,20 @@
+# ForensicAgent configuration.
+#
+# This file is loaded by src/forensicagent/config.py.  Values here are the
+# lowest-priority defaults.  They can be overridden, in increasing priority,
+# by environment variables and by CLI flags:
+#
+#   config.yaml  <  environment variables  <  CLI flags
+#
+# LLM endpoint (any OpenAI-compatible provider):
+#   api_key   - API key (env: OPENAI_API_KEY)
+#   base_url  - base URL of the provider (env: OPENAI_BASE_URL)
+#   model_id  - model identifier (env: OPENAI_MODEL_ID)
+#
+# When no api_key is set, the pipeline runs in deterministic (graph-query)
+# mode without invoking a language model.
+
+llm:
+  api_key: ""
+  base_url: ""
+  model_id: "gpt-4o-mini"
